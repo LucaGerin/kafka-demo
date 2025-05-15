@@ -74,7 +74,10 @@ kafka-demo/
 
 ### ▶️ Avviare i container con Docker Compose
 
-Esegui il seguente comando dalla cartella del progetto:
+Prima di tutto, assicurati che l'Engine Docker sia avviato.
+In Docker Desktop, assicurarsi anche di stare utilizzando "Use the WSL 2 based engine".
+
+Esegui il seguente comando dalla cartella del progetto per avviare i container e scaricare le immagini se necessario:
 
 ```bash
 docker compose up -d
@@ -90,6 +93,14 @@ Questo avvierà:
 Per verificare che i container siano attivi:
 ```bash
 docker ps
+```
+
+```bash
+CONTAINER ID   IMAGE                             COMMAND                  CREATED              STATUS              PORTS                                        NAMES
+some_id_3     confluentinc/cp-kafka:7.6.0       "/etc/confluent/dock…"   About a minute ago   Up About a minute   9092/tcp, 0.0.0.0:9094->9094/tcp             kafka3
+some_id_2     confluentinc/cp-kafka:7.6.0       "/etc/confluent/dock…"   About a minute ago   Up About a minute   9092/tcp, 0.0.0.0:9093->9093/tcp             kafka2
+some_id_1     confluentinc/cp-kafka:7.6.0       "/etc/confluent/dock…"   About a minute ago   Up About a minute   0.0.0.0:9092->9092/tcp                       kafka1
+some_id_0     confluentinc/cp-zookeeper:7.6.0   "/etc/confluent/dock…"   About a minute ago   Up About a minute   2888/tcp, 0.0.0.0:2181->2181/tcp, 3888/tcp   zookeeper
 ```
 
 ## 🧹 Pulizia dei container Docker
