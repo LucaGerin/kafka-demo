@@ -1,0 +1,76 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### IntelliJ IDEA ###
+.idea/modules.xml
+.idea/jarRepositories.xml
+.idea/compiler.xml
+.idea/libraries/
+*.iws
+*.iml
+*.ipr
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### Mac OS ###
+.DS_Store
+
+# File temporanei comuni
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# Docker & env
+docker-compose.override.yml
+.env
+.env.local
+
+# Maven wrapper e cartelle di cache
+.mvn/
+mvnw
+mvnw.cmd
+/logs/
+
+# Output test/reporting
+*.exec
+*.cxf
+*.hprof
+*.ser
+*.class
+*.war
+*.jar
+*.ear
+
+# JUnit test reports
+surefire-reports/
+failsafe-reports/
+
+# IntelliJ: ignora tutto tranne workspace e run configs
+.idea/*
+!.idea/workspace.xml
+!.idea/runConfigurations/
+
