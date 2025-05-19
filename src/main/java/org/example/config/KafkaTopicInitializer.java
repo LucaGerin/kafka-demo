@@ -67,7 +67,7 @@ public class KafkaTopicInitializer {
 
             } else {
                 // Il topic esiste già, nessuna azione necessaria
-                System.out.println("ℹ️  Il topic: " + TOPIC_NAME + " esiste.");
+                System.out.println("ℹ️ Ho verificato che il topic: " + TOPIC_NAME + " esiste.");
             }
 
         } catch (Exception e) {

@@ -20,7 +20,7 @@ public class KafkaConsumerDemo {
         // ------- Configura le proprietà del Kafka Consumer -------
         //Crea un oggetto Properties, che è una mappa chiave/valore usata da Kafka per configurare il consumer.
         Properties props = new Properties();
-        // Specifica l'indirizzo del broker Kafka a cui il producer deve connettersi, "bootstrap" perché serve solo per iniziare in quanto Kafka poi scopre gli altri broker automaticamente
+        // Specifica l'indirizzo del broker (o, meglio, lista di broker) Kafka a cui il producer deve connettersi, "bootstrap" perché serve solo per iniziare in quanto Kafka poi scopre gli altri broker automaticamente
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
         // Dice al consumer come convertire la key dei messaggi da byte[] a oggetti Java
         // Qui si usa StringDeserializer, quindi Kafka converte le chiavi dei messaggi in String
@@ -41,7 +41,7 @@ public class KafkaConsumerDemo {
 
             // Si iscrive a una lista di topic (in questo caso uno solo)
             consumer.subscribe(Collections.singletonList(TOPIC));
-            System.out.println("✅ Consumer avviato. In attesa di messaggi...");
+            System.out.println("[Consumer]: ✅ Consumer avviato. In attesa di messaggi...");
 
             // Ciclo principale: continua a leggere finché il thread non viene interrotto
             while (!Thread.currentThread().isInterrupted()) {
@@ -53,28 +53,28 @@ public class KafkaConsumerDemo {
 
                 // Elabora ogni messaggio ricevuto
                 for (ConsumerRecord<String, String> record : records) {
-                    System.out.printf("⬇️  Ricevuto: key=%s, value=%s, offset=%d, partition=%d%n",
+                    System.out.printf("[Consumer]: ⬇️  Ricevuto: key=%s, value=%s, offset=%d, partition=%d%n",
                             record.key(), record.value(), record.offset(), record.partition());
                 }
             }
 
         } catch (WakeupException e) {
             // Eccezione normale per "svegliare" il consumer quando deve essere chiuso in modo asincrono
-            System.out.println("⚠️ Consumer svegliato per chiusura.");
+            System.out.println("[Consumer]: ⚠️ Consumer svegliato per chiusura.");
 
         } catch (InterruptException e) {
             // Il thread è stato interrotto (es. da consumerThread.interrupt())
             System.out.println("----------------");
-            System.out.println("ℹ️  Consumer interrotto.");
+            System.out.println("[Consumer]: ℹ️  Consumer interrotto.");
 
         } catch (Exception e) {
             // Qualsiasi altro errore imprevisto durante l'esecuzione
-            System.err.println("❌ Errore nel consumer:");
+            System.err.println("[Consumer]: ❌ Errore nel consumer:");
             e.printStackTrace();
 
         } finally {
             // Chiusura finale
-            System.out.println("🔚 Consumer chiuso.");
+            System.out.println("[Consumer]: 🔚 Consumer chiuso.");
         }
 
     }
