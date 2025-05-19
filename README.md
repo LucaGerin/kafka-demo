@@ -138,7 +138,7 @@ docker compose down
 
 ---
 
-### 💣 Eliminare anche i volumi (opzionale)
+### 💣 Eliminare anche i volumi
 
 Se vuoi **rimuovere i container e anche i dati** (inclusi log, topic, offset, ecc.):
 
