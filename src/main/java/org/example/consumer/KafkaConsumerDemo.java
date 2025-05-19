@@ -116,7 +116,7 @@ public class KafkaConsumerDemo {
         } catch (InterruptException e) {
             // Il thread è stato interrotto (es. da consumerThread.interrupt())
             System.out.println("----------------");
-            System.out.println("[Consumer]: ℹ️  Consumer interrotto.");
+            System.out.println("[Consumer]: ℹ️ Consumer interrotto.");
 
         } catch (Exception e) {
             // Qualsiasi altro errore imprevisto durante l'esecuzione
