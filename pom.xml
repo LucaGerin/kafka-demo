@@ -24,7 +24,7 @@
             <version>${kafka.version}</version>
         </dependency>
 
-        <!-- Logging semplice per console -->
+        <!-- Logging (Incluso in libreria kafka-clients)  -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>

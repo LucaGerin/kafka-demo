@@ -143,7 +143,7 @@ docker compose down
 Se vuoi **rimuovere i container e anche i dati** (inclusi log, topic, offset, ecc.):
 
 ```bash
-docker compose down --volumes
+docker compose down -v
 ```
 
 ⚠️ Attenzione: questo comando cancella **tutti i dati** salvati da Kafka (topic, messaggi, ecc.).
@@ -160,22 +160,17 @@ Puoi usare questi comandi tramite Docker per gestire i topic, testare i messaggi
 
 ---
 
-### 🔧 Creare un topic
-
+Entrare nel container:
 ```bash
-docker exec kafka1 kafka-topics --create --topic test-topic --partitions 3 --replication-factor 3 --bootstrap-server localhost:9092
+docker exec -it kafka1 bash
 ```
-
-➡️ Crea un topic chiamato `test-topic` con 3 partizioni e 3 repliche, connesso al broker `kafka1`.
-
----
+📝 **Nota:** puoi usare `kafka2` o `kafka3` al posto di `kafka1`, dato che tutti i broker appartengono allo stesso cluster.
 
 ### 📋 Elencare tutti i topic
 
 ```bash
-docker exec kafka1 kafka-topics --list --bootstrap-server localhost:9092
+kafka-topics --list --bootstrap-server localhost:9092
 ```
-
 ➡️ Mostra l'elenco dei topic nel cluster.
 
 ---
@@ -183,19 +178,17 @@ docker exec kafka1 kafka-topics --list --bootstrap-server localhost:9092
 ### 🔍 Descrivere un topic
 
 ```bash
-docker exec kafka1 kafka-topics --describe --topic test-topic --bootstrap-server localhost:9092
+kafka-topics --describe --topic demo-topic --bootstrap-server localhost:9092
 ```
-
-➡️ Mostra informazioni sul topic `test-topic`, incluse partizioni e repliche.
+➡️ Mostra informazioni sul topic `demo-topic`, incluse partizioni e repliche.
 
 ---
 
 ### 📤 Inviare un messaggio manuale (console producer)
 
 ```bash
-docker exec -it kafka1 kafka-console-producer --topic test-topic --bootstrap-server localhost:9092
+kafka-console-producer --topic demo-topic --bootstrap-server localhost:9092
 ```
-
 ➡️ Apre un prompt interattivo dove puoi scrivere messaggi che verranno inviati al topic.
 
 ---
@@ -203,21 +196,28 @@ docker exec -it kafka1 kafka-console-producer --topic test-topic --bootstrap-ser
 ### 📥 Leggere i messaggi da un topic (console consumer)
 
 ```bash
-docker exec -it kafka1 kafka-console-consumer --topic test-topic --from-beginning --bootstrap-server localhost:9092
+docker exec -it kafka1 kafka-console-consumer --topic demo-topic --from-beginning --bootstrap-server localhost:9092
 ```
 
-➡️ Legge tutti i messaggi presenti nel topic `test-topic`, anche quelli già inviati.
+➡️ Legge tutti i messaggi presenti nel topic `demo-topic`, anche quelli già inviati.
+
+---
+
+### 🔧 Creare un topic
+
+Da dentro la shell, crea un topic chiamato "demo-topic":
+```bash
+kafka-topics --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 3 --topic demo-topic
+```
 
 ---
 
 ### 🚮 Eliminare un topic
 
 ```bash
-docker exec kafka1 kafka-topics --delete --topic test-topic --bootstrap-server localhost:9092
+kafka-topics --delete --topic demo-topic --bootstrap-server localhost:9092
 ```
 
-➡️ Elimina il topic `test-topic` dal cluster.
+➡️ Elimina il topic `demo-topic` dal cluster.
 
 ---
-
-📝 **Nota:** puoi usare `kafka2` o `kafka3` al posto di `kafka1` nei comandi, dato che tutti i broker appartengono allo stesso cluster.
