@@ -51,22 +51,50 @@ public class KafkaProducerDemo {
 
         // Crea un oggetto Properties, che è una mappa chiave/valore usata da Kafka per configurare il producer.
         Properties props = new Properties();
-        //  Specifica l'indirizzo del broker (o, sarebbe meglio, lista di broker) Kafka a cui il producer deve connettersi, "bootstrap" perché serve solo per iniziare in quanto Kafka poi scopre gli altri broker automaticamente
+
+        // Si imposta bootstrap.servers, che specifica l'indirizzo del broker (o, sarebbe meglio, lista di broker) Kafka a cui il producer deve connettersi, "bootstrap" perché serve solo per iniziare in quanto Kafka poi scopre gli altri broker automaticamente
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
-        // Dice al producer come serializzare la key del messaggio
+
+        // Dice al producer come serializzare la key (key.serializer) e il value (value.serializer) del messaggio
         // In questo caso si è scelto StringSerializer, che converte le chiavi da String a byte (byte[]) secondo UTF8.
         // Altri serializers disponibili: ByteArraySerializer, IntegerSerializer, LongSerializer
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        // Dice al producer come serializzare il value del messaggio
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
+        // Configura "compression.type", il tipo di compressione dei messaggi, in questo caso è superfluo perchè il default è già "none"
+        props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "none");
+
+        // Configura "acks", qui superfluo perchè il default è già 1
+        props.put(ProducerConfig.ACKS_CONFIG, "1");
+
         // Configurazioni di ottimizzazione:
-        props.put(ProducerConfig.LINGER_MS_CONFIG, 0);        // linger.ms: Tempo di attesa prima di inviare un batch, per raggruppare più record (default: 0)
-        props.put(ProducerConfig.BATCH_SIZE_CONFIG, 32768);    // batch.size: Dimensione massima di un batch in byte (default: 16384 = 16 KB)
-        props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 67108864); // buffer.memory: Memoria totale disponibile per buffering dei record (default: 33554432 = 32 MB)
+        // "linger.ms": Tempo di attesa prima di inviare un batch, per raggruppare più record (default: 0). Si applica per partizione.
+        props.put(ProducerConfig.LINGER_MS_CONFIG, 0);
+        // "batch.size": Dimensione massima di un batch in byte (default: 16384 = 16 KB). Si applica per partizione. NB: Successo o failure di un invio è stabilito per batch, non per singoli messaggi che contiene.
+        props.put(ProducerConfig.BATCH_SIZE_CONFIG, 32768);
+        // "buffer.memory": Memoria totale disponibile per buffering dei record (default: 33554432 = 32 MB). NB: E' il  totale dato dalle partizioni di un topic.
+        props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 67108864);
+
+        // Configurazione della policy di Retries (Importa solo se acks non è 0)
+        // Configura "retries", il numero di tentativi di ritrasmissione in caso di errore transitorio (es. timeout, errori di rete)
+        props.put(ProducerConfig.RETRIES_CONFIG, 5); // Default è MAX_INT
+        // Configura "retry.backoff.ms", il tempo di attesa (in ms) tra un retry e l’altro retry.backoff.ms
+        props.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, 200); // default: 100
+
+        // Configura "max.in.flight.requests.per.connection", cioè quanti batch di messaggi il producer può inviare contemporaneamente (in parallelo) a una singola connessione verso un singolo broker, senza attendere risposta
+        // Il valore di default è 3
+        // Impostare a 1 questa proprietà significa non inviare un nuovo batch di messaggi finché il precedente non ha ricevuto risposta dal broker, quindi mantenere l'ordine assoluto dei messaggi anche se avviene un retry
+        // ALTERNATIVA (migliore) PER MANTENERE L'ORDINE: usare idempotent producers
+        props.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 3);
 
 
-        try (Producer<String, String> producer = new KafkaProducer<>(props)) { //try-with-resources esegue producer.close() automaticamente alla fine
+        // ------- Comportamento del Kafka Producer -------
+
+        /* try-with-resources esegue automaticamente producer.close() automaticamente
+         * alla fine per chiudere il producer dopo che ha completato tutte le richieste
+         * e ricevuto gli ack (se impostato per aspettarli)
+         */
+        try (Producer<String, String> producer = new KafkaProducer<>(props)) {
             for (int i = 1; i <= 10; i++) {
 
                 // Crea il record da spedire passando topic, key, value
@@ -120,6 +148,13 @@ public class KafkaProducerDemo {
                         exception.printStackTrace();
                     }
                 });
+                /*
+                 * send(record, Callback)
+                 * Callback è un'interfaccia con un metodo che si chiama onCompletion che è invocato quando il send() è stato completato
+                 * Callback ha come parametri metadata e exception: uno solo dei due non sarà "null" dopo l'invocazione di Callback
+                 *      onCompletion(RecordMetadata metadata, java.lang.Exception exception)
+                 *
+                 */
 
 
                 // Simula tempo tra i messaggi
@@ -128,6 +163,12 @@ public class KafkaProducerDemo {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+        /* Se non stessi utilizzando un try-with-resources ma un semplice try, dovrei mettere qui un blocco
+         * finally { ... }
+         * che si occupa di chiudere il Producer con uno tra
+         *      producer.close() -> aspetta il completamento delle richieste
+         *      producer.close(timeout, timeUnit) -> aspetta il completamento delle richieste o il timeout finisca
+         */
 
         System.out.print("[Producer]: Ho finito di produrre messaggi.\n");
     }
