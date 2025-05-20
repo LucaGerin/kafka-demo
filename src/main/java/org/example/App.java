@@ -3,8 +3,14 @@ package org.example;
 import org.example.config.KafkaTopicInitializer;
 import org.example.consumer.KafkaConsumerDemo;
 import org.example.producer.KafkaProducerDemo;
+import org.example.producer.KafkaProducerEOSDemo;
 
 public class App {
+
+    // Flag che abilita o disabilita il producer con policy EOS
+    private static final Boolean eos = true;
+
+
     public static void main(String[] args) {
         //TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
         // to see how IntelliJ IDEA suggests fixing it.
@@ -20,7 +26,12 @@ public class App {
         consumerThread.start();
 
         // Lancia il producer nel main thread
-        KafkaProducerDemo.runProducer();
+        if(eos){
+            KafkaProducerEOSDemo.runTransactionalProducer();
+        } else {
+            KafkaProducerDemo.runProducer();
+        }
+
 
         // Optional: ferma il consumer dopo un po'
         try {
