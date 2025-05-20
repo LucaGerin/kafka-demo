@@ -87,6 +87,14 @@ public class KafkaProducerDemo {
         // ALTERNATIVA (migliore) PER MANTENERE L'ORDINE: usare idempotent producers
         props.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 3);
 
+        // Configura "request.timeout.ms", il tempo massimo che il producer aspetta una risposta dal broker prima di ritentare (default: 30000 ms) (Errore se sono finiti i tentativi stabiliti con "retries")
+        props.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, "20000"); // 20 secondi
+
+        // Configura "max.block.ms", il tempo massimo che il metodo send() può restare bloccato (default: 60000 ms), dopodiché TimeoutException
+        props.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, "30000"); // 30 secondi
+
+        // Configura "delivery.timeout.ms", il tempo massimo totale per la consegna del messaggio (batching + retries + in-flight)
+        props.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, "60000"); // 60 secondi
 
         // ------- Comportamento del Kafka Producer -------
 

@@ -67,6 +67,7 @@ public class KafkaTopicInitializer {
                 // Se il numero di repliche in-sync scende al di sotto di questo valore, Kafka rifiuta le scritture con errore
                 // per garantire la durabilità dei dati (solo se il producer ha configurato acks=all).
                 // Nota: se il producer usa acks=1 o acks=0, questa configurazione NON ha effetto.
+                // Nota: avere un alto min.insync.replicas, vicino o uguale al replication factor delle partizioni, significa bassa availability
                 int desiredMinInSyncReplicas = Math.max(1, replicationFactor - 1);
                 topicConfigs.put("min.insync.replicas", String.valueOf(desiredMinInSyncReplicas));
 
