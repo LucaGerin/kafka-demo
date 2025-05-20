@@ -2,7 +2,7 @@ package org.example.msgGenerator;
 
 import org.example.producer.MessageProducer;
 
-public class MessageGenerator implements Runnable {
+public abstract class MessageGenerator implements Runnable {
 
     private final MessageProducer producer;
     private String generatorId;
@@ -16,13 +16,17 @@ public class MessageGenerator implements Runnable {
         return generatorId;
     }
 
+    // Metodo astratto da implementare per generare messaggi
+    protected abstract String createKey();
+    protected abstract String createValue(int i);
+
 
     @Override
     public void run() {
         try {
             for (int i = 1; i <= 5; i++) {
-                String key = "device-" + i;
-                String value = "Messaggio n " + i + ", inviato usando producer " + producer.getProducerId();
+                String key = createKey();
+                String value = createValue(i);
 
                 // Usa il prpducer per mandare un messaggio
                 producer.sendMessage(key, value);
@@ -33,12 +37,7 @@ public class MessageGenerator implements Runnable {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } finally {
-            try {
-                System.out.printf("[Message Generator %s]: Chiedo la chiusura del producer con id %s\n", this.generatorId, this.producer.getProducerId());
-                producer.close();
-            } catch (Exception e) {
-                System.err.printf("[Message Generator %s]: Errore durante la chiusura del producer con id %s : %s\n", this.generatorId, this.producer.getProducerId(), e.getMessage());
-            }
+            System.out.printf("[Message Generator %s]: Ho concluso la generazione di messaggi e per il producer %s.\n", this.generatorId, this.producer.getProducerId());
         }
     }
 }

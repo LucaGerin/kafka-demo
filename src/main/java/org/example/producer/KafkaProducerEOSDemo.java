@@ -101,7 +101,7 @@ public class KafkaProducerEOSDemo implements MessageProducer{
                     );
                     System.out.println(log);
                 } else {
-                    System.err.println(ANSI_BLUE + "[Producer " + producerId + "]" + ANSI_RESET + ": ❌ Errore nell'invio del messaggio:");
+                    System.err.println("[Producer " + producerId + "]: ❌ Errore nell'invio del messaggio:");
                     exception.printStackTrace();
                 }
             });
@@ -127,7 +127,7 @@ public class KafkaProducerEOSDemo implements MessageProducer{
 
     @Override
     public void close() {
-        System.out.println(ANSI_BLUE + "[Producer %s]" + ANSI_RESET + ": Chiudo il producer con Exactly-Once Semantic policy.");
+        System.out.printf(ANSI_BLUE + "[Producer %s]" + ANSI_RESET + ": Chiudo il producer con Exactly-Once Semantic policy.\n",this. producerId);
         producer.close();
     }
 
