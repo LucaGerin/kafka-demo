@@ -6,16 +6,25 @@ import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.Properties;
 
-public class KafkaConsumerDemo {
+public class KafkaConsumerDemo implements Runnable {
 
-    private final static String TOPIC = "demo-topic";
+    private final String consumerId;
+    private final KafkaConsumer<String, String> consumer;
+    private final String topic;
     private final static String BOOTSTRAP_SERVERS = "localhost:9092";
     private final static String GROUP_ID = "demo-group";
+    private volatile boolean keepConsuming = true;
 
-    public static void runConsumer() {
+    public KafkaConsumerDemo(String topic, String bootstrapServers, String groupId, String consumerId) {
+        this.topic = topic;
+        this.consumerId = consumerId;
+
         /*
          * Configurazioni principali di un Kafka Consumer in Java:
          *
@@ -56,10 +65,10 @@ public class KafkaConsumerDemo {
         // Imposta "enable.auto.commit" su true per il commit automatico dell'offset (il default è comunque true)
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
 
-        // Specifica cosa fare se il gruppo consumer non ha offset salvato in precedenza:
+        // Specifica cosa fare se il gruppo consumer non ha un valido offset salvato in precedenza:
         // - "earliest": consuma dall'inizio del topic
-        // - "latest": consuma solo i nuovi messaggi
-        // - "none": solleva un errore
+        // - "latest": consuma solo i nuovi messaggi (default)
+        // - "none": solleva un errore se non c'è nessun offset salvato
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         // Imposta "max.partition.fetch.bytes", il numero massimo di byte che il consumer può recuperare da una singola partizione in una singola fetch.
@@ -96,52 +105,59 @@ public class KafkaConsumerDemo {
         //          Potrebbero essere letti messaggi che poi saranno annullati → rischio di inconsistenza.
         props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 
+        this.consumer = new KafkaConsumer<>(props);
+    }
 
-        // Crea un KafkaConsumer che verrà chiuso automaticamente alla fine del blocco (try-with-resources)
-        try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props)) {
-
+    @Override
+    public void run() {
+        try {
             // Si iscrive a una lista di topic (in questo caso uno solo)
             // NB: subscribe(Collection<String> topics) sostituisce e sovrascrive la lista di topic precedente
-            consumer.subscribe(Collections.singletonList(TOPIC));
-            System.out.println("[Consumer]: ✅ Consumer avviato. In attesa di messaggi...");
+            consumer.subscribe(Collections.singletonList(topic));
+            System.out.println("[Consumer " + consumerId + "]: ✅ Consumer avviato. In attesa di messaggi...");
 
             // Ciclo principale: continua a leggere finché il thread non viene interrotto
-            while (!Thread.currentThread().isInterrupted()) {
+            while (keepConsuming && !Thread.currentThread().isInterrupted()) {
                 // Effettua il polling: attende fino a 1 secondo per ricevere nuovi messaggi
                 // Il consumer "interroga" Kafka per nuovi messaggi:
                 // - Se ce ne sono, li riceve
                 // - Se non ce ne sono, riceve una risposta vuota
                 ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(1000));
 
+
+
                 // Elabora ogni messaggio ricevuto
                 for (ConsumerRecord<String, String> record : records) {
-                    System.out.printf("[Consumer]: ⬇️ Ricevuto: partition=%d, offset=%d, key=%s, value=%s \n",
-                            record.partition(), record.offset(), record.key(), record.value()  );
+
+                    // Converte il timestamp in un formato più leggibile
+                    Instant instant = Instant.ofEpochMilli(record.timestamp());
+                    String formattedTimestamp = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")
+                            .withZone(ZoneId.systemDefault())
+                            .format(instant);
+
+                    // Stampa il messaggio
+                    System.out.printf("[Consumer " + consumerId + "]: ⬇️ Ricevuto: partition=%d, offset=%d, key=%s, value=%s, timestamp=%s \n",
+                            record.partition(), record.offset(), record.key(), record.value(), formattedTimestamp);
                 }
             }
-
         } catch (WakeupException e) {
-            // Eccezione normale per "svegliare" il consumer quando deve essere chiuso in modo asincrono
-            System.out.println("[Consumer]: ⚠️ Consumer svegliato per chiusura.");
-
+            System.out.println("[Consumer " + consumerId + "]: ⚠️ Consumer svegliato per chiusura.");
         } catch (InterruptException e) {
             // Il thread è stato interrotto (es. da consumerThread.interrupt())
             System.out.println("----------------");
-            System.out.println("[Consumer]: ℹ️ Consumer interrotto.");
-
+            System.out.println("[Consumer " + consumerId + "]: ℹ️ Consumer interrotto.");
         } catch (Exception e) {
-            // Qualsiasi altro errore imprevisto durante l'esecuzione
-            System.err.println("[Consumer]: ❌ Errore nel consumer:");
-            // e.printStackTrace();
-
+            System.err.println("[Consumer " + consumerId + "]: ❌ Errore nel consumer: " + e.getMessage());
         } finally {
-            // Chiusura finale
-            System.out.println("[Consumer]: 🔚 Consumer chiuso.\n");
+            consumer.close();
+            System.out.println("[Consumer " + consumerId + "]: 🔚 Consumer chiuso.");
         }
-        /* Se non stessi utilizzando un try-with-resources ma un semplice try, dovrei mettere qui, nel blocco finally{}:
-         * che si occupa di chiudere il Consumer con:
-         *      consumer.close()
-         */
-
     }
+
+    public void shutdown() {
+        keepConsuming = false;
+        consumer.wakeup();
+    }
+
+
 }

@@ -10,6 +10,10 @@ public class App {
     // Flag che abilita o disabilita il producer con policy EOS
     private static final Boolean eos = false;
 
+    private static final String TOPIC = "demo-topic";
+    private static final String BOOTSTRAP_SERVERS = "localhost:9092";
+    private static final String GROUP_ID = "demo-group";
+
 
     public static void main(String[] args) {
         //TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
@@ -21,23 +25,27 @@ public class App {
         // Crea il topic se non esiste
         KafkaTopicInitializer.createTopicIfNotExists();
 
-        // Lancia il consumer in un thread separato
-        Thread consumerThread = new Thread(KafkaConsumerDemo::runConsumer);
+        // Lancia il consumer su thread separato
+        KafkaConsumerDemo consumerRunnable = new KafkaConsumerDemo(TOPIC, BOOTSTRAP_SERVERS, GROUP_ID, "C-1");
+        Thread consumerThread = new Thread(consumerRunnable);
         consumerThread.start();
 
-        // Lancia il producer nel main thread
-        if(eos){
-            KafkaProducerEOSDemo.runTransactionalProducer();
+        // Lancia il producer nel thread principale
+        if (eos) {
+            KafkaProducerEOSDemo producer = new KafkaProducerEOSDemo(TOPIC, BOOTSTRAP_SERVERS, "eos-producer-1", "P-eos-1", true);
+            producer.runTransactionalProducer();
         } else {
-            KafkaProducerDemo.runProducer();
+            KafkaProducerDemo producer = new KafkaProducerDemo(TOPIC, BOOTSTRAP_SERVERS, "P-1");
+            producer.runProducer();
         }
 
 
-        // Optional: ferma il consumer dopo un po'
+        // Aspetta 10 secondi e ferma il consumer
         try {
             Thread.sleep(10000); // tempo per farlo girare
             System.out.print("Chiudo il Consumer...\n");
-            consumerThread.interrupt(); // non ferma il consumer in modo "pulito", solo se lo modifichi
+            consumerRunnable.shutdown();     // shutdown "gentile"
+            consumerThread.join();           // aspetta che il consumer chiuda
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }

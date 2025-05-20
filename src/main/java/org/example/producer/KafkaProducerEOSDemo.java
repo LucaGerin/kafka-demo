@@ -26,47 +26,53 @@ import java.util.Random;
 
 public class KafkaProducerEOSDemo {
 
-    private final static String TOPIC = "demo-topic";
-    private final static String BOOTSTRAP_SERVERS = "localhost:9092";
+    private final String producerId;
+    private final String topic;
+    private final Producer<String, String> producer;
+    private final boolean simulateErrors; // TEST: per simulare un numero casuale di errori mettere TRUE
 
-    // TEST: per simulare un numero casuale di errori mettere TRUE
-    private final static Boolean someErrorsBeforeCommit = true;
-
-    public static void runTransactionalProducer() {
-
-        // Usato dopo per simulare errore un numero di volte
-        Random random = new Random();
+    public KafkaProducerEOSDemo(String topic, String bootstrapServers, String transactionalId, String producerId, boolean simulateErrors) {
+        this.topic = topic;
+        this.producerId = producerId;
+        this.simulateErrors = simulateErrors;
 
         // === Configurazione base del Kafka Producer ===
         Properties props = new Properties();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
         // === Configurazioni per Exactly-Once Semantics ===
-        props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");           // Idempotenza attiva (obbligatoria per EOS, già da sola garantisce un buon livello di EOS)
-        props.put(ProducerConfig.ACKS_CONFIG, "all");                           // Garantisce che tutte le ISR confermino
+        props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");    // Idempotenza attiva (obbligatoria per EOS, già da sola garantisce un buon livello di EOS)
+        props.put(ProducerConfig.ACKS_CONFIG, "all");                   // Garantisce che tutte le ISR confermino
 
-        props.put(ProducerConfig.RETRIES_CONFIG, Integer.toString(Integer.MAX_VALUE)); // Infiniti tentativi
+        props.put(ProducerConfig.RETRIES_CONFIG, Integer.toString(Integer.MAX_VALUE));  // Infiniti tentativi
         // NB: il retry automatico funziona solo per errori transitori interni a Kafka, non per l’eccezione simulata manualmente
 
-        props.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "5");  // <=5 per EOS (1-5 OK da Kafka 2.5+)
+        props.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "5");   // <=5 per EOS (1-5 OK da Kafka 2.5+)
 
         // ID univoco per transazioni,Permette al broker Kafka di gestire fencing, commit/abort e l’isolamento delle transazioni.
-        props.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "eos-producer-1");
+        props.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, transactionalId);
         // NB: In ambienti distribuiti o con failover, è importante che ogni istanza del producer abbia un transactional ID univoco.
-
 
         // === Timeout legati a invio ===
         props.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, "20000");
         props.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, "60000");
         props.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, "30000");
 
-        try (KafkaProducer<String, String> producer = new KafkaProducer<>(props)) {
+        // Creare il producer
+        this.producer = new KafkaProducer<>(props);
 
-            // Inizializza il producer per le transazioni
-            producer.initTransactions();
+        // Inizializza il producer per le transazioni
+        this.producer.initTransactions();
+    }
 
+    public void runTransactionalProducer() {
+
+        // Usato dopo per simulare errore un numero di volte
+        Random random = new Random();
+
+        try {
             for (int i = 1; i <= 10; i++) {
                 try {
                     // Avvia una transazione Kafka
@@ -74,22 +80,22 @@ public class KafkaProducerEOSDemo {
 
                     String key = "trx-" + i;
                     String value = "Messaggio transazionale numero " + i;
-                    ProducerRecord<String, String> record = new ProducerRecord<>(TOPIC, key, value);
+                    ProducerRecord<String, String> record = new ProducerRecord<>(topic, key, value);
 
                     producer.send(record, (metadata, exception) -> {
                         if (exception == null) {
-                            System.out.printf("[EOS Producer]: ✅ Messaggio \"%s\" inviato a topic %s, partizione %d, offset=%d%n",
+                            System.out.printf("[EOS Producer " + producerId + "]: ✅ Messaggio \"%s\" inviato a topic %s, partizione %d, offset=%d%n",
                                     key, metadata.topic(), metadata.partition(), metadata.offset());
                         } else {
-                            System.err.println("[EOS Producer]: ❌ Errore nell'invio del messaggio:");
+                            System.err.println("[EOS Producer " + producerId + "]: ❌ Errore nell'invio del messaggio:");
                             exception.printStackTrace();
                         }
                     });
 
                     // TEST: Simula un errore inatteso prima del commit
-                    if(someErrorsBeforeCommit){
-                        if(random.nextInt(3) == 0){ // Questo blocco viene eseguito circa 1/3 delle volte
-                            System.out.println("[EOS Producer]: Simulo un errore durante l'invio del messaggio " + i + ", prima del commit");
+                    if (simulateErrors)  {
+                        if(random.nextInt(3) == 0) { // Questo blocco viene eseguito circa 1/3 delle volte
+                            System.out.println("[EOS Producer " + producerId + "]: Simulo un errore durante l'invio del messaggio " + i + ", prima del commit");
                             throw new RuntimeException("Errore simulato prima del commit!");
                         }
                     }
@@ -98,24 +104,21 @@ public class KafkaProducerEOSDemo {
                     producer.commitTransaction();
 
                 } catch (ProducerFencedException e) {
-                    // Il producer è stato "fenced" (escluso) da Kafka perché un altro producer con lo stesso transactional.id è attivo
-                    System.err.println("[EOS Producer]: ProducerFencedException: questo producer non è più valido. Chiudo.");
-                    producer.close(); // Chiusura obbligatoria: producer non più utilizzabile
+                    System.err.println("[EOS Producer " + producerId + "]: ProducerFencedException: questo producer non è più valido. Chiudo.");
+                    producer.close();
                 } catch (Exception e) {
-                    // Altri errori imprevisti durante la transazione (e.g. problemi di rete, serializzazione, etc.)
-                    System.err.println("[EOS Producer]: ❌ Errore durante la transazione, eseguo rollback.");
-                    producer.abortTransaction(); // Annulla la transazione corrente
+                    System.err.println("[EOS Producer " + producerId + "]: ❌ Errore durante la transazione, eseguo rollback.");
+                    producer.abortTransaction();
                 }
 
-
-                Thread.sleep(500); // Simula intervallo tra i messaggi
+                Thread.sleep(500);
             }
-
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        } finally {
+            producer.close();
+            System.out.println("[EOS Producer " + producerId + "]: ✅ Completato l'invio dei messaggi con Exactly-Once Semantic policy.");
         }
-
-        System.out.println("[EOS Producer]: ✅ Completato l'invio dei messaggi con Exactly-Once Semantic policy.");
     }
 
 }

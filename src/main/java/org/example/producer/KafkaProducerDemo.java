@@ -7,10 +7,13 @@ import java.util.Properties;
 
 public class KafkaProducerDemo {
 
-    private final static String TOPIC = "demo-topic";
-    private final static String BOOTSTRAP_SERVERS = "localhost:9092";
+    private final String producerId;
+    private final String topic;
+    private final Producer<String, String> producer;
 
-    public static void runProducer() {
+    public KafkaProducerDemo(String topic, String bootstrapServers, String producerId) {
+        this.topic = topic;
+        this.producerId = producerId;
 
         /*
          * === Kafka Producer Configuration ===
@@ -53,7 +56,7 @@ public class KafkaProducerDemo {
         Properties props = new Properties();
 
         // Si imposta bootstrap.servers, che specifica l'indirizzo del broker (o, sarebbe meglio, lista di broker) Kafka a cui il producer deve connettersi, "bootstrap" perché serve solo per iniziare in quanto Kafka poi scopre gli altri broker automaticamente
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 
         // Dice al producer come serializzare la key (key.serializer) e il value (value.serializer) del messaggio
         // In questo caso si è scelto StringSerializer, che converte le chiavi da String a byte (byte[]) secondo UTF8.
@@ -96,19 +99,22 @@ public class KafkaProducerDemo {
         // Configura "delivery.timeout.ms", il tempo massimo totale per la consegna del messaggio (batching + retries + in-flight)
         props.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, "60000"); // 60 secondi
 
-        // ------- Comportamento del Kafka Producer -------
+        this.producer = new KafkaProducer<>(props);
+    }
 
-        /* try-with-resources esegue automaticamente producer.close() automaticamente
-         * alla fine per chiudere il producer dopo che ha completato tutte le richieste
-         * e ricevuto gli ack (se impostato per aspettarli)
-         */
-        try (Producer<String, String> producer = new KafkaProducer<>(props)) {
+
+    public void runProducer() {
+        try {
             for (int i = 1; i <= 10; i++) {
 
                 // Crea il record da spedire passando topic, key, value
                 String key = Integer.toString(i);
                 String value = "Messaggio numero " + i;
-                ProducerRecord<String, String> record = new ProducerRecord<>(TOPIC, key, value);
+                ProducerRecord<String, String> record = new ProducerRecord<>(topic, key, value); // Costruttore del record con valori di default
+                /*  Costruttore con più parametri:
+                 *      ProducerRecord<String, String> record = new ProducerRecord<>(topic, null, System.currentTimeMillis(), key, value);
+                 *  NB: Se non esplicitamente fornita la partition (quindi se il secondo argomento è "null"), Kafka usa l’hash della key per decidere deterministicamente a quale partizione inviare il messaggio.
+                 */
 
                 /*
                  * Invio di records da parte di un Kafka producer, può essere::
@@ -148,36 +154,33 @@ public class KafkaProducerDemo {
 
 
                 // Invia in modo asincrono il record e gestisce i metadata che sono ritornati o le exception
-                producer.send(record, (metadata, exception) -> {
-                    if (exception == null) {
-                        System.out.printf("[Producer]: ✅ Messaggio con key=\"%s\" inviato al topic \"%s\", partizione %d, offset=%d%n",
-                                record.key(), metadata.topic(), metadata.partition(), metadata.offset());
-                    } else {
-                        exception.printStackTrace();
-                    }
-                });
                 /*
                  * send(record, Callback)
                  * Callback è un'interfaccia con un metodo che si chiama onCompletion che è invocato quando il send() è stato completato
                  * Callback ha come parametri metadata e exception: uno solo dei due non sarà "null" dopo l'invocazione di Callback
                  *      onCompletion(RecordMetadata metadata, java.lang.Exception exception)
-                 *
                  */
-
+                producer.send(record, (metadata, exception) -> {
+                    if (exception == null) {
+                        System.out.printf("[Producer " + producerId + "]: ✅ Messaggio con key=\"%s\" inviato al topic \"%s\", partizione %d, offset=%d%n",
+                                record.key(), metadata.topic(), metadata.partition(), metadata.offset());
+                    } else {
+                        exception.printStackTrace();
+                    }
+                });
 
                 // Simula tempo tra i messaggi
                 Thread.sleep(500);
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        } finally {
+            /* chiudere il Producer con uno tra:
+             *    - producer.close() -> aspetta il completamento delle richieste
+             *    - producer.close(timeout, timeUnit) -> aspetta il completamento delle richieste o il timeout finisca
+             */
+            producer.close();
+            System.out.print("[Producer " + producerId + "]: Ho finito di produrre messaggi.\n");
         }
-        /* Se non stessi utilizzando un try-with-resources ma un semplice try, dovrei mettere qui un blocco
-         * finally { ... }
-         * che si occupa di chiudere il Producer con uno tra
-         *      producer.close() -> aspetta il completamento delle richieste
-         *      producer.close(timeout, timeUnit) -> aspetta il completamento delle richieste o il timeout finisca
-         */
-
-        System.out.print("[Producer]: Ho finito di produrre messaggi.\n");
     }
 }
