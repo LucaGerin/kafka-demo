@@ -24,12 +24,17 @@ import java.util.Random;
  * che in questa classe non è utilizzato, non essendo il caso.
  */
 
-public class KafkaProducerEOSDemo {
+public class KafkaProducerEOSDemo implements MessageProducer{
+
 
     private final String producerId;
     private final String topic;
     private final Producer<String, String> producer;
     private final boolean simulateErrors; // TEST: per simulare un numero casuale di errori mettere TRUE
+
+    // Codici ANSI per il colore
+    public static final String ANSI_RESET = "\u001B[0m";
+    public static final String ANSI_BLUE = "\u001B[34m";
 
     public KafkaProducerEOSDemo(String topic, String bootstrapServers, String transactionalId, String producerId, boolean simulateErrors) {
         this.topic = topic;
@@ -67,58 +72,63 @@ public class KafkaProducerEOSDemo {
         this.producer.initTransactions();
     }
 
-    public void runTransactionalProducer() {
+    public String getProducerId() {
+        return producerId;
+    }
+
+    @Override
+    public void sendMessage(String key, String value) {
 
         // Usato dopo per simulare errore un numero di volte
         Random random = new Random();
 
         try {
-            for (int i = 1; i <= 10; i++) {
-                try {
-                    // Avvia una transazione Kafka
-                    producer.beginTransaction();
+            // Avvia una transazione Kafka
+            producer.beginTransaction();
 
-                    String key = "trx-" + i;
-                    String value = "Messaggio transazionale numero " + i;
-                    ProducerRecord<String, String> record = new ProducerRecord<>(topic, key, value);
+            ProducerRecord<String, String> record = new ProducerRecord<>(topic, key, value);
 
-                    producer.send(record, (metadata, exception) -> {
-                        if (exception == null) {
-                            System.out.printf("[EOS Producer " + producerId + "]: ✅ Messaggio \"%s\" inviato a topic %s, partizione %d, offset=%d%n",
-                                    key, metadata.topic(), metadata.partition(), metadata.offset());
-                        } else {
-                            System.err.println("[EOS Producer " + producerId + "]: ❌ Errore nell'invio del messaggio:");
-                            exception.printStackTrace();
-                        }
-                    });
-
-                    // TEST: Simula un errore inatteso prima del commit
-                    if (simulateErrors)  {
-                        if(random.nextInt(3) == 0) { // Questo blocco viene eseguito circa 1/3 delle volte
-                            System.out.println("[EOS Producer " + producerId + "]: Simulo un errore durante l'invio del messaggio " + i + ", prima del commit");
-                            throw new RuntimeException("Errore simulato prima del commit!");
-                        }
-                    }
-
-                    // Commit della transazione se tutto è andato a buon fine
-                    producer.commitTransaction();
-
-                } catch (ProducerFencedException e) {
-                    System.err.println("[EOS Producer " + producerId + "]: ProducerFencedException: questo producer non è più valido. Chiudo.");
-                    producer.close();
-                } catch (Exception e) {
-                    System.err.println("[EOS Producer " + producerId + "]: ❌ Errore durante la transazione, eseguo rollback.");
-                    producer.abortTransaction();
+            producer.send(record, (metadata, exception) -> {
+                if (exception == null) {
+                    String log = String.format(
+                            ANSI_BLUE + "[Producer %s]" + ANSI_RESET + ": ✅ Messaggio con key=\"%s\" e value=\"%s\" inviato al topic \"%s\", partizione %d, offset=%d",
+                            producerId,
+                            record.key(),
+                            record.value(),
+                            metadata.topic(),
+                            metadata.partition(),
+                            metadata.offset()
+                    );
+                    System.out.println(log);
+                } else {
+                    System.err.println(ANSI_BLUE + "[Producer " + producerId + "]" + ANSI_RESET + ": ❌ Errore nell'invio del messaggio:");
+                    exception.printStackTrace();
                 }
+            });
 
-                Thread.sleep(500);
+            // TEST: Simula un errore inatteso prima del commit
+            if (this.simulateErrors)  {
+                if(random.nextInt(5) == 0) { // Questo blocco viene eseguito circa 1/5 delle volte
+                    System.out.printf(ANSI_BLUE + "[Producer %s]" + ANSI_RESET + ": Simulo un errore durante l'invio del messaggio con key \"%s\" e value \"%s\", prima del commit\n", this.producerId, record.key(), record.value());
+                    throw new RuntimeException("Errore simulato prima del commit!");
+                }
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        } finally {
+
+            // Commit della transazione se tutto è andato a buon fine
+            producer.commitTransaction();
+        } catch (ProducerFencedException e) {
+            System.err.printf("[Producer %s]: ProducerFencedException: questo producer non è più valido. Chiudo.\n", producerId);
             producer.close();
-            System.out.println("[EOS Producer " + producerId + "]: ✅ Completato l'invio dei messaggi con Exactly-Once Semantic policy.");
+        } catch (Exception e) {
+            System.err.printf("[Producer %s]: ❌ Errore durante la transazione per il messaggio con key \"%s\" e value \"%s\", eseguo rollback%n", producerId, key, value);
+            producer.abortTransaction();
         }
+    }
+
+    @Override
+    public void close() {
+        System.out.println(ANSI_BLUE + "[Producer %s]" + ANSI_RESET + ": Chiudo il producer con Exactly-Once Semantic policy.");
+        producer.close();
     }
 
 }

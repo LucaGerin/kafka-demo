@@ -17,9 +17,11 @@ public class KafkaConsumerDemo implements Runnable {
     private final String consumerId;
     private final KafkaConsumer<String, String> consumer;
     private final String topic;
-    private final static String BOOTSTRAP_SERVERS = "localhost:9092";
-    private final static String GROUP_ID = "demo-group";
     private volatile boolean keepConsuming = true;
+
+    // Codici ANSI per il colore
+    public static final String ANSI_RESET = "\u001B[0m";
+    public static final String ANSI_GREEN = "\u001B[32m";
 
     public KafkaConsumerDemo(String topic, String bootstrapServers, String groupId, String consumerId) {
         this.topic = topic;
@@ -53,14 +55,14 @@ public class KafkaConsumerDemo implements Runnable {
         Properties props = new Properties();
 
         // Specifica l'indirizzo del broker (o, meglio, lista di broker) Kafka a cui il producer deve connettersi, "bootstrap" perché serve solo per iniziare in quanto Kafka poi scopre gli altri broker automaticamente
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 
         // Dice al consumer come convertire la key ("key.deserializer") e il value ("value.deserializer") dei messaggi da byte[] a oggetti Java
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
         // Imposta "group.id": l'ID del gruppo consumer
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
 
         // Imposta "enable.auto.commit" su true per il commit automatico dell'offset (il default è comunque true)
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
@@ -114,7 +116,7 @@ public class KafkaConsumerDemo implements Runnable {
             // Si iscrive a una lista di topic (in questo caso uno solo)
             // NB: subscribe(Collection<String> topics) sostituisce e sovrascrive la lista di topic precedente
             consumer.subscribe(Collections.singletonList(topic));
-            System.out.println("[Consumer " + consumerId + "]: ✅ Consumer avviato. In attesa di messaggi...");
+            System.out.println(ANSI_GREEN + "[Consumer " + consumerId + "]" + ANSI_RESET + ": Consumer avviato. In attesa di messaggi...");
 
             // Ciclo principale: continua a leggere finché il thread non viene interrotto
             while (keepConsuming && !Thread.currentThread().isInterrupted()) {
@@ -136,21 +138,21 @@ public class KafkaConsumerDemo implements Runnable {
                             .format(instant);
 
                     // Stampa il messaggio
-                    System.out.printf("[Consumer " + consumerId + "]: ⬇️ Ricevuto: partition=%d, offset=%d, key=%s, value=%s, timestamp=%s \n",
-                            record.partition(), record.offset(), record.key(), record.value(), formattedTimestamp);
+                    System.out.printf(ANSI_GREEN +"[Consumer " + consumerId + "]" + ANSI_RESET + ": ⬇️ Ricevuto: topic=%s, partition=%d, offset=%d, key=%s, value=\"%s\", timestamp=%s \n",
+                            record.topic(), record.partition(), record.offset(), record.key(), record.value(), formattedTimestamp);
                 }
             }
         } catch (WakeupException e) {
-            System.out.println("[Consumer " + consumerId + "]: ⚠️ Consumer svegliato per chiusura.");
+            System.out.println(ANSI_GREEN +"[Consumer " + consumerId + "]" + ANSI_RESET + ": ⚠️ Consumer svegliato per chiusura.");
         } catch (InterruptException e) {
             // Il thread è stato interrotto (es. da consumerThread.interrupt())
             System.out.println("----------------");
-            System.out.println("[Consumer " + consumerId + "]: ℹ️ Consumer interrotto.");
+            System.out.println(ANSI_GREEN +"[Consumer " + consumerId + "]" + ANSI_RESET + ": ℹ️ Consumer interrotto.");
         } catch (Exception e) {
             System.err.println("[Consumer " + consumerId + "]: ❌ Errore nel consumer: " + e.getMessage());
         } finally {
             consumer.close();
-            System.out.println("[Consumer " + consumerId + "]: 🔚 Consumer chiuso.");
+            System.out.println(ANSI_GREEN +"[Consumer " + consumerId + "]" + ANSI_RESET + ": 🔚 Consumer chiuso.");
         }
     }
 

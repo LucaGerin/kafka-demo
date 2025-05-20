@@ -5,11 +5,15 @@ import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.util.Properties;
 
-public class KafkaProducerDemo {
+public class KafkaProducerDemo implements MessageProducer{
 
     private final String producerId;
     private final String topic;
     private final Producer<String, String> producer;
+
+    // Codici ANSI per il colore
+    public static final String ANSI_RESET = "\u001B[0m";
+    public static final String ANSI_CYAN = "\u001B[36m";
 
     public KafkaProducerDemo(String topic, String bootstrapServers, String producerId) {
         this.topic = topic;
@@ -102,85 +106,91 @@ public class KafkaProducerDemo {
         this.producer = new KafkaProducer<>(props);
     }
 
-
-    public void runProducer() {
-        try {
-            for (int i = 1; i <= 10; i++) {
-
-                // Crea il record da spedire passando topic, key, value
-                String key = Integer.toString(i);
-                String value = "Messaggio numero " + i;
-                ProducerRecord<String, String> record = new ProducerRecord<>(topic, key, value); // Costruttore del record con valori di default
-                /*  Costruttore con più parametri:
-                 *      ProducerRecord<String, String> record = new ProducerRecord<>(topic, null, System.currentTimeMillis(), key, value);
-                 *  NB: Se non esplicitamente fornita la partition (quindi se il secondo argomento è "null"), Kafka usa l’hash della key per decidere deterministicamente a quale partizione inviare il messaggio.
-                 */
-
-                /*
-                 * Invio di records da parte di un Kafka producer, può essere::
-                 *
-                 * 1. Invio ASINCRONO (default):
-                 *    - Il metodo Producer<K, V>.send() restituisce immediatamente un oggetto Future<RecordMetadata>.
-                 *          Future<RecordMetadata> send(ProducerRecord<K, V> var1);
-                 *          Future<RecordMetadata> send(ProducerRecord<K, V> var1, Callback var2);
-                 *    - Il messaggio viene inviato "in background", e l'applicazione continua a eseguire senza aspettare la conferma.
-                 *      In particolare, il messaggio viene messo in un buffer locale e un altro thread si occupa dell'invio di questi messaggi (anche in batch). L'invio si può forzare con il metodo:
-                 *          Producer<K, V>.flush();
-                 *    - Preferisci l'invio asincrono per alte prestazioni e throughput.
-                 *    - È possibile registrare una callback per gestire successi o errori:
-                 *
-                 *    producer.send(record, (metadata, exception) -> {
-                 *        if (exception == null) {
-                 *            System.out.println("Messaggio inviato con successo: " + metadata);
-                 *        } else {
-                 *            exception.printStackTrace();
-                 *        }
-                 *    });
-                 *
-                 * 2. Invio SINCRONO:
-                 *    - Si forza l'attesa del completamento dell'invio tramite `.get()` sul Future.
-                 *    - L'esecuzione si blocca finché il broker non risponde (o genera un errore).
-                 *    - È utile quando è necessario garantire l'invio prima di procedere.
-                 *    - Usa l'invio sincrono quando hai bisogno di garanzie forti sull'invio (es. logging critico o transazioni).
-                 *
-                 *    try {
-                 *        RecordMetadata metadata = producer.send(record).get(); // invio sincrono
-                 *        System.out.println("Messaggio inviato: " + metadata);
-                 *    } catch (Exception e) {
-                 *        e.printStackTrace();
-                 *    }
-                 *
-                 */
-
-
-                // Invia in modo asincrono il record e gestisce i metadata che sono ritornati o le exception
-                /*
-                 * send(record, Callback)
-                 * Callback è un'interfaccia con un metodo che si chiama onCompletion che è invocato quando il send() è stato completato
-                 * Callback ha come parametri metadata e exception: uno solo dei due non sarà "null" dopo l'invocazione di Callback
-                 *      onCompletion(RecordMetadata metadata, java.lang.Exception exception)
-                 */
-                producer.send(record, (metadata, exception) -> {
-                    if (exception == null) {
-                        System.out.printf("[Producer " + producerId + "]: ✅ Messaggio con key=\"%s\" inviato al topic \"%s\", partizione %d, offset=%d%n",
-                                record.key(), metadata.topic(), metadata.partition(), metadata.offset());
-                    } else {
-                        exception.printStackTrace();
-                    }
-                });
-
-                // Simula tempo tra i messaggi
-                Thread.sleep(500);
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        } finally {
-            /* chiudere il Producer con uno tra:
-             *    - producer.close() -> aspetta il completamento delle richieste
-             *    - producer.close(timeout, timeUnit) -> aspetta il completamento delle richieste o il timeout finisca
-             */
-            producer.close();
-            System.out.print("[Producer " + producerId + "]: Ho finito di produrre messaggi.\n");
-        }
+    @Override
+    public String getProducerId() {
+        return producerId;
     }
+
+    @Override
+    public void sendMessage(String key, String value) {
+
+        // Crea il record da spedire passando topic, key, value
+        ProducerRecord<String, String> record = new ProducerRecord<>(topic, key, value);
+        /*  Costruttore con più parametri:
+         *      ProducerRecord<String, String> record = new ProducerRecord<>(topic, null, System.currentTimeMillis(), key, value);
+         *  NB: Se non esplicitamente fornita la partition (quindi se il secondo argomento è "null"), Kafka usa l’hash della key per decidere deterministicamente a quale partizione inviare il messaggio.
+         */
+
+        /*
+         * Invio di records da parte di un Kafka producer, può essere::
+         *
+         * 1. Invio ASINCRONO (default):
+         *    - Il metodo Producer<K, V>.send() restituisce immediatamente un oggetto Future<RecordMetadata>.
+         *          Future<RecordMetadata> send(ProducerRecord<K, V> var1);
+         *          Future<RecordMetadata> send(ProducerRecord<K, V> var1, Callback var2);
+         *    - Il messaggio viene inviato "in background", e l'applicazione continua a eseguire senza aspettare la conferma.
+         *      In particolare, il messaggio viene messo in un buffer locale e un altro thread si occupa dell'invio di questi messaggi (anche in batch). L'invio si può forzare con il metodo:
+         *          Producer<K, V>.flush();
+         *    - Preferisci l'invio asincrono per alte prestazioni e throughput.
+         *    - È possibile registrare una callback per gestire successi o errori:
+         *
+         *    producer.send(record, (metadata, exception) -> {
+         *        if (exception == null) {
+         *            System.out.println("Messaggio inviato con successo: " + metadata);
+         *        } else {
+         *            exception.printStackTrace();
+         *        }
+         *    });
+         *
+         * 2. Invio SINCRONO:
+         *    - Si forza l'attesa del completamento dell'invio tramite `.get()` sul Future.
+         *    - L'esecuzione si blocca finché il broker non risponde (o genera un errore).
+         *    - È utile quando è necessario garantire l'invio prima di procedere.
+         *    - Usa l'invio sincrono quando hai bisogno di garanzie forti sull'invio (es. logging critico o transazioni).
+         *
+         *    try {
+         *        RecordMetadata metadata = producer.send(record).get(); // invio sincrono
+         *        System.out.println("Messaggio inviato: " + metadata);
+         *    } catch (Exception e) {
+         *        e.printStackTrace();
+         *    }
+         *
+         */
+
+        // Invia in modo asincrono il record e gestisce i metadata che sono ritornati o le exception
+        /*
+         * send(record, Callback)
+         * Callback è un'interfaccia con un metodo che si chiama onCompletion che è invocato quando il send() è stato completato
+         * Callback ha come parametri metadata e exception: uno solo dei due non sarà "null" dopo l'invocazione di Callback
+         *      onCompletion(RecordMetadata metadata, java.lang.Exception exception)
+         */
+        producer.send(record, (metadata, exception) -> {
+            if (exception == null) {
+                String log = String.format(
+                        ANSI_CYAN + "[Producer %s]" + ANSI_RESET + ": ✅ Messaggio con key=\"%s\" e value=\"%s\" inviato al topic \"%s\", partizione %d, offset=%d",
+                        producerId,
+                        record.key(),
+                        record.value(),
+                        metadata.topic(),
+                        metadata.partition(),
+                        metadata.offset()
+                );
+                System.out.println(log);
+
+            } else {
+                exception.printStackTrace();
+            }
+        });
+    }
+
+    @Override
+    public void close() {
+        System.out.println(ANSI_CYAN +"[Producer " + producerId + "]" + ANSI_RESET + ": Chiudo il producer.");
+        /* chiudere il Producer con uno tra:
+         *    - producer.close() -> aspetta il completamento delle richieste
+         *    - producer.close(timeout, timeUnit) -> aspetta il completamento delle richieste o il timeout finisca
+         */
+        producer.close();
+    }
+
 }

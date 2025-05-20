@@ -2,13 +2,15 @@ package org.example;
 
 import org.example.config.KafkaTopicInitializer;
 import org.example.consumer.KafkaConsumerDemo;
+import org.example.msgGenerator.MessageGenerator;
 import org.example.producer.KafkaProducerDemo;
 import org.example.producer.KafkaProducerEOSDemo;
+import org.example.producer.MessageProducer;
 
 public class App {
 
     // Flag che abilita o disabilita il producer con policy EOS
-    private static final Boolean eos = false;
+    private static final Boolean eos = true;
 
     private static final String TOPIC = "demo-topic";
     private static final String BOOTSTRAP_SERVERS = "localhost:9092";
@@ -30,25 +32,41 @@ public class App {
         Thread consumerThread = new Thread(consumerRunnable);
         consumerThread.start();
 
-        // Lancia il producer nel thread principale
-        if (eos) {
-            KafkaProducerEOSDemo producer = new KafkaProducerEOSDemo(TOPIC, BOOTSTRAP_SERVERS, "eos-producer-1", "P-eos-1", true);
-            producer.runTransactionalProducer();
-        } else {
-            KafkaProducerDemo producer = new KafkaProducerDemo(TOPIC, BOOTSTRAP_SERVERS, "P-1");
-            producer.runProducer();
+        // Crea i producer
+        MessageProducer standardProducer = new KafkaProducerDemo(TOPIC, BOOTSTRAP_SERVERS, "P-1");
+        MessageProducer eosProducer = new KafkaProducerEOSDemo(TOPIC, BOOTSTRAP_SERVERS, "eos-producer-1", "P-eos-1", true);
+
+
+        // Avvia due generatori messaggi che usano i due producer
+        Thread generatorStandard = new Thread(new MessageGenerator(standardProducer, "Gen1"), "Generator-P1");
+        generatorStandard.start();
+
+        Thread generatorEOS = null;
+        if(eos) {
+            generatorEOS = new Thread(new MessageGenerator(eosProducer, "Gen2"), "Generator-EOS");
+            generatorEOS.start();
         }
 
 
-        // Aspetta 10 secondi e ferma il consumer
+        // Attendi 10 secondi e poi ferma tutto
         try {
-            Thread.sleep(10000); // tempo per farlo girare
-            System.out.print("Chiudo il Consumer...\n");
-            consumerRunnable.shutdown();     // shutdown "gentile"
-            consumerThread.join();           // aspetta che il consumer chiuda
+            Thread.sleep(10000);
+
+            System.out.println("⏳ Attendo che il generator finisca e i producer siano chiusi (se non è già successo)...");
+            generatorStandard.join();
+            if(eos && generatorEOS!=null) {
+                generatorEOS.join();
+            }
+
+            System.out.println("🛑 Chiudo il Consumer...");
+            consumerRunnable.shutdown();
+            consumerThread.join();
+
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+
+        System.out.println("✅ Programma terminato.");
     }
 
 
