@@ -1,16 +1,24 @@
 package org.example.producer;
 
 import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.util.Properties;
+import java.util.Random;
 
 public class KafkaProducerEOSDemo {
 
     private final static String TOPIC = "demo-topic";
     private final static String BOOTSTRAP_SERVERS = "localhost:9092";
 
+    // TEST: per simulare un numero casuale di errori mettere TRUE
+    private final static Boolean someErrorsBeforeCommit = true;
+
     public static void runTransactionalProducer() {
+
+        // Usato dopo per simulare errore un numero di volte
+        Random random = new Random();
 
         // Configurazione del Kafka Producer con supporto a Exactly-Once
         Properties props = new Properties();
@@ -21,7 +29,10 @@ public class KafkaProducerEOSDemo {
         // === Configurazioni per Exactly-Once Semantics ===
         props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");           // Idempotenza attiva (obbligatoria)
         props.put(ProducerConfig.ACKS_CONFIG, "all");                           // Garantisce che tutte le ISR confermino
+
         props.put(ProducerConfig.RETRIES_CONFIG, Integer.toString(Integer.MAX_VALUE)); // Infiniti tentativi
+        // NB: il retry automatico funziona solo per errori transitori interni a Kafka, non per l’eccezione simulata manualmente
+
         props.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "5");  // <=5 per EOS (1-5 OK da Kafka 2.5+)
         props.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "eos-producer-1");   // ID univoco per transazioni
 
@@ -54,13 +65,27 @@ public class KafkaProducerEOSDemo {
                         }
                     });
 
+                    // TEST: Simula un errore inatteso prima del commit
+                    if(someErrorsBeforeCommit){
+                        if(random.nextInt(3) == 0){ // Questo blocco viene eseguito circa 1/3 delle volte
+                            System.out.println("[EOS Producer]: Simulo un errore durante l'invio del messaggio " + i + ", prima del commit");
+                            throw new RuntimeException("Errore simulato prima del commit!");
+                        }
+                    }
+
                     // Commit della transazione se tutto è andato a buon fine
                     producer.commitTransaction();
 
+                } catch (ProducerFencedException e) {
+                    // Il producer è stato "fenced" (escluso) da Kafka perché un altro producer con lo stesso transactional.id è attivo
+                    System.err.println("[EOS Producer]: ProducerFencedException: questo producer non è più valido. Chiudo.");
+                    producer.close(); // Chiusura obbligatoria: producer non più utilizzabile
                 } catch (Exception e) {
-                    System.err.println("[EOS Producer]: ⚠️ Errore, eseguo rollback della transazione.");
-                    producer.abortTransaction();
+                    // Altri errori imprevisti durante la transazione (e.g. problemi di rete, serializzazione, etc.)
+                    System.err.println("[EOS Producer]: ❌ Errore durante la transazione, eseguo rollback.");
+                    producer.abortTransaction(); // Annulla la transazione corrente
                 }
+
 
                 Thread.sleep(500); // Simula intervallo tra i messaggi
             }
