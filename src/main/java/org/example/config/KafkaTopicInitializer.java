@@ -7,10 +7,7 @@ import org.apache.kafka.common.Node;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 public class KafkaTopicInitializer {
@@ -20,6 +17,9 @@ public class KafkaTopicInitializer {
 
     // Nome del topic da verificare o creare
     private static final String TOPIC_NAME = "demo-topic";
+
+    // Numero di partizioni del topic
+    private static final int numPartitions = 3;
 
     // Metodo che verifica se il topic esiste, altrimenti lo crea
     public static void createTopicIfNotExists() {
@@ -58,10 +58,23 @@ public class KafkaTopicInitializer {
 
                 // Stampa configurazione di creazione prima di procedere
                 System.out.printf("📦 Creazione del topic \"%s\" con %d partizioni e replication factor %d%n",
-                        TOPIC_NAME, 3, replicationFactor);
+                        TOPIC_NAME, numPartitions, replicationFactor);
 
-                // Crea il topic con 3 partizioni e replication factor calcolato
-                NewTopic newTopic = new NewTopic(TOPIC_NAME, 3, replicationFactor);
+                // Prepara le configurazioni personalizzate del topic
+                Map<String, String> topicConfigs = new HashMap<>();
+                // La configurazione "min.insync.replicas" indica il numero minimo di repliche che devono essere "in-sync"
+                // (cioè aggiornate con il leader) affinché Kafka consideri valido un write quando il producer usa "acks=all".
+                // Se il numero di repliche in-sync scende al di sotto di questo valore, Kafka rifiuta le scritture con errore
+                // per garantire la durabilità dei dati (solo se il producer ha configurato acks=all).
+                // Nota: se il producer usa acks=1 o acks=0, questa configurazione NON ha effetto.
+                int desiredMinInSyncReplicas = Math.max(1, replicationFactor - 1);
+                topicConfigs.put("min.insync.replicas", String.valueOf(desiredMinInSyncReplicas));
+
+                System.out.println("🔧 Configurazioni del topic:");
+                topicConfigs.forEach((key, value) -> System.out.println(" - " + key + " = " + value));
+
+                // Crea il topic con 3 partizioni e replication factor calcolato e le configs stabilite
+                NewTopic newTopic = new NewTopic(TOPIC_NAME, numPartitions, replicationFactor).configs(topicConfigs);
                 adminClient.createTopics(Collections.singletonList(newTopic)).all().get();
                 System.out.println("✅ Topic creato: " + TOPIC_NAME);
 

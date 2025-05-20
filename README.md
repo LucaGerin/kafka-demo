@@ -196,7 +196,7 @@ kafka-console-producer --topic demo-topic --bootstrap-server localhost:9092
 ### 📥 Leggere i messaggi da un topic (console consumer)
 
 ```bash
-docker exec -it kafka1 kafka-console-consumer --topic demo-topic --from-beginning --bootstrap-server localhost:9092
+kafka-console-consumer --topic demo-topic --from-beginning --bootstrap-server localhost:9092
 ```
 
 ➡️ Legge tutti i messaggi presenti nel topic `demo-topic`, anche quelli già inviati.
