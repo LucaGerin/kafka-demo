@@ -8,7 +8,7 @@ import org.example.producer.KafkaProducerEOSDemo;
 public class App {
 
     // Flag che abilita o disabilita il producer con policy EOS
-    private static final Boolean eos = true;
+    private static final Boolean eos = false;
 
 
     public static void main(String[] args) {

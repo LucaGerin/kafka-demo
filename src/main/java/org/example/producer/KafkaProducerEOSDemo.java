@@ -7,6 +7,23 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import java.util.Properties;
 import java.util.Random;
 
+/*
+ * Exactly Once Semantics (EOS) significa che ogni messaggio prodotto viene scritto nel topic
+ * una e una sola volta, anche in caso di errori o ritentativi.
+ *
+ * Alternative:
+ * - At most once: i messaggi possono andare persi, ma non duplicati.
+ * - At least once: i messaggi non vengono persi, ma possono essere duplicati.
+ *
+ * Un producer Kafka normale (non EOS) è per default "at least once": ritenta in caso di errore,
+ * ma può produrre duplicati se non usi idempotenza o transazioni.
+ *
+ * Questo producer invece implementa EOS
+ * NB: Per un producer che è anche un consumer, è necessario anche utilizzare:
+ * producer.sendOffsetsToTransaction(offsetsMap, consumerGroupId);
+ * che in questa classe non è utilizzato, non essendo il caso.
+ */
+
 public class KafkaProducerEOSDemo {
 
     private final static String TOPIC = "demo-topic";
@@ -20,23 +37,27 @@ public class KafkaProducerEOSDemo {
         // Usato dopo per simulare errore un numero di volte
         Random random = new Random();
 
-        // Configurazione del Kafka Producer con supporto a Exactly-Once
+        // === Configurazione base del Kafka Producer ===
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
         // === Configurazioni per Exactly-Once Semantics ===
-        props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");           // Idempotenza attiva (obbligatoria)
+        props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");           // Idempotenza attiva (obbligatoria per EOS, già da sola garantisce un buon livello di EOS)
         props.put(ProducerConfig.ACKS_CONFIG, "all");                           // Garantisce che tutte le ISR confermino
 
         props.put(ProducerConfig.RETRIES_CONFIG, Integer.toString(Integer.MAX_VALUE)); // Infiniti tentativi
         // NB: il retry automatico funziona solo per errori transitori interni a Kafka, non per l’eccezione simulata manualmente
 
         props.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "5");  // <=5 per EOS (1-5 OK da Kafka 2.5+)
-        props.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "eos-producer-1");   // ID univoco per transazioni
 
-        // Timeout legati a invio
+        // ID univoco per transazioni,Permette al broker Kafka di gestire fencing, commit/abort e l’isolamento delle transazioni.
+        props.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "eos-producer-1");
+        // NB: In ambienti distribuiti o con failover, è importante che ogni istanza del producer abbia un transactional ID univoco.
+
+
+        // === Timeout legati a invio ===
         props.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, "20000");
         props.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, "60000");
         props.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, "30000");

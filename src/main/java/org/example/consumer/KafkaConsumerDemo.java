@@ -86,6 +86,17 @@ public class KafkaConsumerDemo {
          * Bassa latency (Scarica dati il più veloce possibile): fetch.min.bytes=1 (default)
          */
 
+        // Configura "isolation.level", che controlla la visibilità dei messaggi in presenza di producer transazionali (Exactly-Once Semantics - EOS).
+        // Serve per decidere se il consumer deve leggere anche i messaggi prodotti da transazioni NON ancora committate o solo quelli sicuri.
+        // Valori possibili:
+        //      - "read_committed" (consigliato per EOS):
+        //          Il consumer legge SOLO i messaggi che provengono da transazioni che sono state correttamente "committate", mentre i messaggi da transazioni in corso o abortite vengono IGNORATI.
+        //      - "read_uncommitted" (default):
+        //          Il consumer legge TUTTI i messaggi, inclusi quelli prodotti da transazioni NON ancora concluse (committed o aborted).
+        //          Potrebbero essere letti messaggi che poi saranno annullati → rischio di inconsistenza.
+        props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
+
+
         // Crea un KafkaConsumer che verrà chiuso automaticamente alla fine del blocco (try-with-resources)
         try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props)) {
 

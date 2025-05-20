@@ -1,20 +1,24 @@
 # 🧩 Kafka Java Demo – Cluster Kafka con Docker e Java 17 (Temurin)
 
-Questo progetto dimostra come utilizzare **Apache Kafka** con **Java 17 (Eclipse Temurin)** e un **cluster Kafka a 3 broker** eseguito tramite **Docker Compose**. Include `producer` e un `consumer` in Java.
+Questo progetto dimostra come utilizzare **Apache Kafka** con **Java 17 (Eclipse Temurin)** e un **cluster Kafka a 3 broker** eseguito tramite **Docker Compose**. 
+Include:
+- Un `producer` 
+- Un `producerEOS`
+- un `consumer`
 
 ---
 
 ## 📦 Componenti utilizzati
 
-| Componente        | Versione / Info               |
-|-------------------|-------------------------------|
-| Java              | 17 (Eclipse Temurin)          |
-| Kafka Client      | 3.7.1                          |
-| Docker Compose    | v3.8                          |
-| Kafka (Broker)    | Confluent Kafka 7.6.0         |
-| Zookeeper         | Confluent Zookeeper 7.6.0     |
-| SLF4J             | 2.0.9                          |
-| Build System      | Maven                         |
+| Componente     | Versione / Info           |
+|----------------|---------------------------|
+| Java           | 17 (Eclipse Temurin)      |
+| Kafka Client   | 3.7.1                     |
+| Docker Compose | v3.8                      |
+| Kafka (Broker) | Confluent Kafka 7.6.0     |
+| Zookeeper      | Confluent Zookeeper 7.6.0 |
+| SLF4J          | 2.0.9                     |
+| Build System   | Maven                     |
 
 ---
 
@@ -23,12 +27,12 @@ Questo progetto dimostra come utilizzare **Apache Kafka** con **Java 17 (Eclipse
 Assicurati di avere installati i seguenti strumenti sul tuo computer:
 
 
-| Strumento         | Versione consigliata | Descrizione                                  |
-|-------------------|----------------------|----------------------------------------------|
-| [Java JDK](https://adoptium.net/) | 17 (Temurin)         | Linguaggio e runtime Java                    |
-| [Apache Maven](https://maven.apache.org/) | 3.8+                | Build system per compilare il progetto       |
-| [Docker](https://www.docker.com/products/docker-desktop/) | Ultima stabile     | Container engine per eseguire Kafka e Zookeeper |
-| [Docker Compose](https://docs.docker.com/compose/) | v2 o superiore     | Orchestrazione dei container                 |
+| Strumento                                                 | Versione consigliata | Descrizione                                     |
+|-----------------------------------------------------------|----------------------|-------------------------------------------------|
+| [Java JDK](https://adoptium.net/)                         | 17 (Temurin)         | Linguaggio e runtime Java                       |
+| [Apache Maven](https://maven.apache.org/)                 | 3.8+                 | Build system per compilare il progetto          |
+| [Docker](https://www.docker.com/products/docker-desktop/) | Ultima stabile       | Container engine per eseguire Kafka e Zookeeper |
+| [Docker Compose](https://docs.docker.com/compose/)        | v2 o superiore       | Orchestrazione dei container                    |
 
 #### 📁 Repository locale
 
