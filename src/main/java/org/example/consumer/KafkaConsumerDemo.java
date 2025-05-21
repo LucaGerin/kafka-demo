@@ -4,6 +4,7 @@ import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.TopicPartition;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -117,6 +118,44 @@ public class KafkaConsumerDemo implements Runnable {
             // NB: subscribe(Collection<String> topics) sostituisce e sovrascrive la lista di topic precedente
             consumer.subscribe(Collections.singletonList(topic));
             System.out.println(ANSI_GREEN + "[Consumer " + consumerId + "]" + ANSI_RESET + ": Consumer avviato. In attesa di messaggi...");
+
+            /*
+             * ======================
+             * Kafka Consumer Offsets
+             * ======================
+             * --- GET OFFSETS ---
+             * 1. position(TopicPartition)
+             *    - Ritorna l'offset del prossimo record che verrà letto dalla partizione specificata.
+             * 2. offsetsForTimes(Map<TopicPartition, Long> timestampsToSearch)
+             *    - Ritorna, per ogni partizione specificata, l'offset corrispondente a un certo timestamp.
+             *    - Utile per iniziare a leggere i messaggi da un certo momento (es: da ieri alle 10:00).
+             * --- CHANGE OFFSETS ---
+             * 3. seekToBeginning(Collection<TopicPartition>)
+             *    - Fa il seek all'offset iniziale di ciascuna partizione specificata.
+             * 4. seekToEnd(Collection<TopicPartition>)
+             *    - Fa il seek all'ultimo offset disponibile (dopo l’ultimo messaggio).
+             *    - Utile per leggere solo i nuovi messaggi ignorando quelli vecchi.
+             * 5. seek(TopicPartition, offset)
+             *    - Fa il seek a un offset specifico in una determinata partizione.
+             *    - Utile per riprendere la lettura da un punto preciso.
+             *
+             * --- ESEMPIO  ---
+             * TopicPartition tp = new TopicPartition("my-topic", 0);
+             * consumer.assign(Arrays.asList(tp));
+             * consumer.seekToBeginning(Arrays.asList(tp)); // Vai all'inizio
+             * consumer.seek(tp, 123);                      // Vai a un offset specifico
+             * long currentOffset = consumer.position(tp);  // Controlla l'offset attuale
+             */
+            // Attendi fino a che le partizioni non sono assegnate
+            while (consumer.assignment().isEmpty()) {
+                consumer.poll(Duration.ofMillis(100));
+            }
+            // Stampa l'offset iniziale da cui il consumer inizierà a leggere per ogni partizione
+            for (TopicPartition partition : consumer.assignment()) {
+                long offset = consumer.position(partition);
+                System.out.println(ANSI_GREEN + "[Consumer " + consumerId + "]" + ANSI_RESET + "Partition " + partition.partition() + " - Starting offset: " + offset);
+            }
+
 
             // Ciclo principale: continua a leggere finché il thread non viene interrotto
             while (keepConsuming && !Thread.currentThread().isInterrupted()) {
