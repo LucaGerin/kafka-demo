@@ -146,8 +146,8 @@ public class KafkaProducerDemo implements MessageProducer{
         // Crea il record da spedire passando topic, key, value
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, key, value);
         /*  Costruttore con più parametri:
-         *      ProducerRecord<String, String> record = new ProducerRecord<>(topic, null, System.currentTimeMillis(), key, value);
-         *  NB: Se non esplicitamente fornita la partition (quindi se il secondo argomento è "null"), Kafka usa l’hash della key per decidere deterministicamente a quale partizione inviare il messaggio.
+         *      ProducerRecord<String, String> record = new ProducerRecord<>(topic, partition, timestamp, key, value);
+         *  NB: la partition specificata qui ha precedenza maggiore rispetto a quella calcolata dal partitioner in utilizzo (qui posso anche metterla null)
          */
 
         /*

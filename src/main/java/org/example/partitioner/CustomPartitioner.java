@@ -2,7 +2,10 @@ package org.example.partitioner;
 
 import org.apache.kafka.clients.producer.Partitioner;
 import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.InvalidRecordException;
+import org.apache.kafka.common.PartitionInfo;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -18,6 +21,7 @@ public class CustomPartitioner implements Partitioner {
 
     // Metodo che definisce in che partizione deve finire un messaggio
     // In questa implementazione copiamo la strategia di default, tranne se il messaggio hail prefisso "[VERY IMPORTANT]", in tal caso la partizione è la 0
+    // NB: Con un partitioner personalizzato non è necessario basarsi necessariamente sulla key, posso usare qualunque cosa tra quelle che mi sono passate qui come parametri!
     @Override
     public int partition(String topic,
                          Object key,
@@ -27,7 +31,12 @@ public class CustomPartitioner implements Partitioner {
                          Cluster cluster) {
 
         // Recupera il numero di partizioni di un topic
-        int numPartitions = cluster.partitionCountForTopic(topic);
+        List<PartitionInfo> partitions = cluster.partitionsForTopic(topic);
+        int numPartitions = partitions.size();
+
+        if (keyBytes != null && !(key instanceof String)){
+            throw new InvalidRecordException("Record did not have a string key");
+        }
 
         // Partizione fissa per messaggi VIP
         if (key instanceof String && ((String) key).startsWith("[VERY IMPORTANT]")) {
@@ -43,6 +52,9 @@ public class CustomPartitioner implements Partitioner {
             // Hash deterministico per chiave non nulla
             int hash = org.apache.kafka.common.utils.Utils.murmur2(keyBytes);
             partition = Math.abs(hash) % numPartitions;
+
+            // Se volessi usare tutte le partizioni tranne la 0:
+            // partition = ( Math.abs(hash) % (numPartitions-1) ) + 1;
         }
         return partition;
     }
