@@ -5,6 +5,7 @@ import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.TopicPartition;
+import org.example.util.TimestampFormatter;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -170,15 +171,9 @@ public class KafkaConsumerDemo implements Runnable {
                 // Elabora ogni messaggio ricevuto
                 for (ConsumerRecord<String, String> record : records) {
 
-                    // Converte il timestamp in un formato più leggibile
-                    Instant instant = Instant.ofEpochMilli(record.timestamp());
-                    String formattedTimestamp = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")
-                            .withZone(ZoneId.systemDefault())
-                            .format(instant);
-
                     // Stampa il messaggio
-                    System.out.printf(ANSI_GREEN +"[Consumer " + consumerId + "]" + ANSI_RESET + ": ⬇️ Ricevuto: topic=%s, partition=%d, offset=%d, key=%s, value=\"%s\", timestamp=%s \n",
-                            record.topic(), record.partition(), record.offset(), record.key(), record.value(), formattedTimestamp);
+                    System.out.printf(ANSI_GREEN +"[Consumer " + consumerId + "]" + ANSI_RESET + ": ⬇️ Ricevuto: topic=%s, partition=%d, offset=%d, key=%s, timestamp=%s,\n\t\t\t\tvalue=\"%s\" \n",
+                            record.topic(), record.partition(), record.offset(), record.key(), TimestampFormatter.format(record.timestamp()), record.value());
                 }
             }
         } catch (WakeupException e) {

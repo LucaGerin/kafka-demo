@@ -2,7 +2,11 @@ package org.example.producer;
 
 import org.apache.kafka.clients.producer.*;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.example.util.TimestampFormatter;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Properties;
 
 public class KafkaProducerDemo implements MessageProducer{
@@ -165,12 +169,14 @@ public class KafkaProducerDemo implements MessageProducer{
          *      onCompletion(RecordMetadata metadata, java.lang.Exception exception)
          */
         producer.send(record, (metadata, exception) -> {
+
             if (exception == null) {
                 String log = String.format(
-                        ANSI_CYAN + "[Producer %s]" + ANSI_RESET + ": ✅ Messaggio con key=\"%s\" e value=\"%s\" inviato al topic \"%s\", partizione %d, offset=%d",
+                        ANSI_CYAN + "[Producer %s]" + ANSI_RESET + ": ✅ Messaggio con key=\"%s\", value=\"%s\", timestamp=%s \n\t\t\t\tinviato al topic \"%s\", partizione %d, offset=%d",
                         producerId,
                         record.key(),
                         record.value(),
+                        TimestampFormatter.format(metadata.timestamp()), //NB: record.timestamp() è null, viene riempito dopo l'invio
                         metadata.topic(),
                         metadata.partition(),
                         metadata.offset()

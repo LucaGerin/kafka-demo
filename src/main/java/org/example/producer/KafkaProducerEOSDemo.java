@@ -3,6 +3,7 @@ package org.example.producer;
 import org.apache.kafka.clients.producer.*;
 import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.example.util.TimestampFormatter;
 
 import java.util.Properties;
 import java.util.Random;
@@ -91,10 +92,11 @@ public class KafkaProducerEOSDemo implements MessageProducer{
             producer.send(record, (metadata, exception) -> {
                 if (exception == null) {
                     String log = String.format(
-                            ANSI_BLUE + "[Producer %s]" + ANSI_RESET + ": ✅ Messaggio con key=\"%s\" e value=\"%s\" inviato al topic \"%s\", partizione %d, offset=%d",
+                            ANSI_BLUE + "[Producer %s]" + ANSI_RESET + ": ✅ Messaggio con key=\"%s\", value=\"%s\", timestamp=%s \n\t\t\t\tinviato al topic \"%s\", partizione %d, offset=%d",
                             producerId,
                             record.key(),
                             record.value(),
+                            TimestampFormatter.format(metadata.timestamp()), //NB: record.timestamp() è null, viene riempito dopo l'invio
                             metadata.topic(),
                             metadata.partition(),
                             metadata.offset()
