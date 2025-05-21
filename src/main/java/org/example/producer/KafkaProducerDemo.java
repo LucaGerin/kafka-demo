@@ -69,6 +69,7 @@ public class KafkaProducerDemo implements MessageProducer{
         // Dice al producer come serializzare la key (key.serializer) e il value (value.serializer) del messaggio
         // In questo caso si è scelto StringSerializer, che converte le chiavi da String a byte (byte[]) secondo UTF8.
         // Altri serializers disponibili: ByteArraySerializer, IntegerSerializer, LongSerializer
+        // Kafka ha i suoi serializer pronti in org.apache.kafka.common.serialization
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
