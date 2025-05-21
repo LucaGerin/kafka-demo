@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Properties;
 
@@ -114,48 +115,95 @@ public class KafkaConsumerDemo implements Runnable {
 
     @Override
     public void run() {
+
+        // Listener per gestire il rebalance
+        /*
+         * === ConsumerRebalanceListener ===
+         * Kafka può riassegnare dinamicamente le partizioni ai consumer quando:
+         * - un nuovo consumer entra o esce dal gruppo,
+         * - il topic cambia numero di partizioni,
+         * - il consumer viene riavviato.
+         *
+         * Questo listener permette di eseguire azioni personalizzate durante due fasi del rebalance:
+         * 1. onPartitionsRevoked(...)
+         *    - Chiamato PRIMA che le partizioni vengano revocate dal consumer. È il punto ideale per salvare lo stato, committare gli offset manualmente, ecc.
+         * 2. onPartitionsAssigned(...)
+         *    - Chiamato DOPO che le nuove partizioni sono state assegnate.
+         *    - Qui si possono, ad esempio, eseguire operazioni di seek (es: seekToBeginning), logging, ecc.
+         */
+        ConsumerRebalanceListener listener = new ConsumerRebalanceListener() {
+            @Override
+            public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+                // Nessuna azione necessaria qui
+            }
+
+            @Override
+            public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+
+                /*
+                 * ======================
+                 * Kafka Consumer Offsets
+                 * ======================
+                 * --- GET OFFSETS ---
+                 * 1. position(TopicPartition)
+                 *    - Ritorna l'offset del prossimo record che verrà letto dalla partizione specificata.
+                 * 2. offsetsForTimes(Map<TopicPartition, Long> timestampsToSearch)
+                 *    - Ritorna, per ogni partizione specificata, l'offset corrispondente a un certo timestamp.
+                 *    - Utile per iniziare a leggere i messaggi da un certo momento (es: da ieri alle 10:00).
+                 * --- CHANGE OFFSETS ---
+                 * 3. seekToBeginning(Collection<TopicPartition>)
+                 *    - Fa il seek all'offset iniziale di ciascuna partizione specificata.
+                 * 4. seekToEnd(Collection<TopicPartition>)
+                 *    - Fa il seek all'ultimo offset disponibile (dopo l’ultimo messaggio).
+                 *    - Utile per leggere solo i nuovi messaggi ignorando quelli vecchi.
+                 * 5. seek(TopicPartition, offset)
+                 *    - Fa il seek a un offset specifico in una determinata partizione.
+                 *    - Utile per riprendere la lettura da un punto preciso.
+                 *
+                 * --- ESEMPIO  ---
+                 * TopicPartition tp = new TopicPartition("my-topic", 0);
+                 * consumer.assign(Arrays.asList(tp));
+                 * consumer.seekToBeginning(Arrays.asList(tp)); // Vai all'inizio
+                 * consumer.seek(tp, 123);                      // Vai a un offset specifico
+                 * long currentOffset = consumer.position(tp);  // Controlla l'offset attuale
+                 */
+                // Stampa l'offset iniziale da cui il consumer inizierà a leggere per ogni partizione
+                for (TopicPartition partition : partitions) {
+                    try {
+                        long offset = consumer.position(partition); // Offset da cui riprenderà la lettura
+                        System.out.println(ANSI_GREEN + "[Consumer " + consumerId + "]" + ANSI_RESET +
+                                " Partition " + partition.partition() + " - Starting offset: " + offset);
+                    } catch (Exception e) {
+                        System.err.println("[Consumer " + consumerId + "]: Errore nel recupero offset: " + e.getMessage());
+                    }
+                }
+                /*
+                 * NB: consumer.position(...) richiede che ci sia già stato un poll() che ha attivato il rebalance.
+                 * Quindi, se non chiamato dentro onPartitionsAssigned(...), deve essere preceduto da codice come:
+                 * while (consumer.assignment().isEmpty()) {
+                 *     consumer.poll(Duration.ofMillis(100));
+                 * }
+                 */
+
+                /*
+                // Resetta l'offset di ogni partizione all'inizio, a 0, quando ti è assegnata
+                System.out.printf(ANSI_GREEN + "[Consumer " + consumerId + "]" + ANSI_RESET + ": vado al primo offset\n");
+                consumer.seekToBeginning(partitions);
+                 */
+
+            }
+        };
+
         try {
             // Si iscrive a una lista di topic (in questo caso uno solo)
             // NB: subscribe(Collection<String> topics) sostituisce e sovrascrive la lista di topic precedente
-            consumer.subscribe(Collections.singletonList(topic));
+            consumer.subscribe(Collections.singletonList(topic), listener);
             System.out.println(ANSI_GREEN + "[Consumer " + consumerId + "]" + ANSI_RESET + ": Consumer avviato. In attesa di messaggi...");
 
-            /*
-             * ======================
-             * Kafka Consumer Offsets
-             * ======================
-             * --- GET OFFSETS ---
-             * 1. position(TopicPartition)
-             *    - Ritorna l'offset del prossimo record che verrà letto dalla partizione specificata.
-             * 2. offsetsForTimes(Map<TopicPartition, Long> timestampsToSearch)
-             *    - Ritorna, per ogni partizione specificata, l'offset corrispondente a un certo timestamp.
-             *    - Utile per iniziare a leggere i messaggi da un certo momento (es: da ieri alle 10:00).
-             * --- CHANGE OFFSETS ---
-             * 3. seekToBeginning(Collection<TopicPartition>)
-             *    - Fa il seek all'offset iniziale di ciascuna partizione specificata.
-             * 4. seekToEnd(Collection<TopicPartition>)
-             *    - Fa il seek all'ultimo offset disponibile (dopo l’ultimo messaggio).
-             *    - Utile per leggere solo i nuovi messaggi ignorando quelli vecchi.
-             * 5. seek(TopicPartition, offset)
-             *    - Fa il seek a un offset specifico in una determinata partizione.
-             *    - Utile per riprendere la lettura da un punto preciso.
-             *
-             * --- ESEMPIO  ---
-             * TopicPartition tp = new TopicPartition("my-topic", 0);
-             * consumer.assign(Arrays.asList(tp));
-             * consumer.seekToBeginning(Arrays.asList(tp)); // Vai all'inizio
-             * consumer.seek(tp, 123);                      // Vai a un offset specifico
-             * long currentOffset = consumer.position(tp);  // Controlla l'offset attuale
-             */
-            // Attendi fino a che le partizioni non sono assegnate
-            while (consumer.assignment().isEmpty()) {
-                consumer.poll(Duration.ofMillis(100));
-            }
-            // Stampa l'offset iniziale da cui il consumer inizierà a leggere per ogni partizione
-            for (TopicPartition partition : consumer.assignment()) {
-                long offset = consumer.position(partition);
-                System.out.println(ANSI_GREEN + "[Consumer " + consumerId + "]" + ANSI_RESET + "Partition " + partition.partition() + " - Starting offset: " + offset);
-            }
+
+
+
+
 
 
             // Ciclo principale: continua a leggere finché il thread non viene interrotto
