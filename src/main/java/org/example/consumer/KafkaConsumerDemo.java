@@ -11,9 +11,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Properties;
+import java.util.*;
 
 public class KafkaConsumerDemo implements Runnable {
 
@@ -138,7 +136,7 @@ public class KafkaConsumerDemo implements Runnable {
             }
 
             @Override
-            public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+            public void onPartitionsAssigned(Collection<TopicPartition> partitions) { //NB: le partizioni sono assegnate quando un poll() scarica i metadata! Quindi questo metodo parte dopo il primo poll() dopo una modifica alle partizioni.
 
                 /*
                  * ======================
@@ -242,6 +240,44 @@ public class KafkaConsumerDemo implements Runnable {
         keepConsuming = false;
         consumer.wakeup();
     }
+
+
+    /**
+     * Esegue il seek del consumer a un offset calcolato in base a un timestamp fornito:
+     * 1. Costruisce una mappa con tutte le partizioni assegnate e il timestamp desiderato.
+     * 2. Chiede a Kafka di restituire, per ogni partizione, l'offset corrispondente a quel timestamp.
+     * 3. Esegue un seek esplicito su ciascuna partizione a quell'offset.
+     *
+     * Utile per iniziare a leggere da un certo punto nel tempo (es. "da ieri alle 12:00").
+     *
+     * @param timestamp il valore del timestamp (in millisecondi) da cui iniziare a leggere.
+     */
+    private void seekToTimestamp(long timestamp) {
+        Map<TopicPartition, Long> timestampsToSearch = new HashMap<>();
+
+        // ① Aggiunge ogni partizione assegnata con il timestamp desiderato
+        for (TopicPartition partition : consumer.assignment()) {
+            timestampsToSearch.put(partition, timestamp);
+        }
+
+        // ② Ottiene gli offset corrispondenti ai timestamp richiesti
+        Map<TopicPartition, OffsetAndTimestamp> result = consumer.offsetsForTimes(timestampsToSearch);
+
+        // ③ Esegue seek a ciascun offset restituito
+        for (Map.Entry<TopicPartition, OffsetAndTimestamp> entry : result.entrySet()) {
+            OffsetAndTimestamp offsetAndTimestamp = entry.getValue();
+            if (offsetAndTimestamp != null) {
+                consumer.seek(entry.getKey(), offsetAndTimestamp.offset());
+                System.out.println(ANSI_GREEN + "[Consumer " + consumerId + "]" + ANSI_RESET +
+                        " Seek su partition " + entry.getKey().partition() +
+                        " al timestamp " + timestamp +
+                        " → offset=" + offsetAndTimestamp.offset());
+            } else {
+                System.out.println("[Consumer " + consumerId + "]: ⚠️ Nessun offset trovato per il timestamp in partition " + entry.getKey().partition());
+            }
+        }
+    }
+
 
 
 }
