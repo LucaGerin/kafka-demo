@@ -66,7 +66,49 @@ public class KafkaConsumerDemo implements Runnable {
         props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
 
         // Imposta "enable.auto.commit" su true per il commit automatico dell'offset (il default è comunque true)
+        // NB: L'offset committato è l'offset del PROSSIMO record da leggere, non dell'ultimo letto!
+        // L'offset committato è quello da cui un consumer che subentra a uno che sostituisce inizia a laggere
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
+        /*
+         * Quando enable.auto.commit è impostato su false, il Kafka consumer NON committerà automaticamente gli offset.
+         * Questo significa che sei responsabile di effettuare manualmente il commit dell'offset, decidendo *quando* farlo.
+         * Ci sono due modalità principali di commit manuale:
+         * 1. At-most-once:
+         *    - Si committa PRIMA di elaborare il messaggio.
+         *    - Vantaggio: nessun messaggio verrà mai elaborato due volte.
+         *    - Svantaggio: se il consumer crasha dopo il commit ma prima dell'elaborazione, il messaggio viene perso.
+         *    Esempio:
+         *      record = consumer.poll();
+         *      consumer.commitSync();
+         *      process(record); // potrebbe non essere eseguito se il processo crasha dopo il commit
+         *
+         * 2. At-least-once:
+         *    - Si committa DOPO l'elaborazione del messaggio.
+         *    - Vantaggio: ogni messaggio sarà elaborato almeno una volta.
+         *    - Svantaggio: in caso di crash subito dopo l'elaborazione ma prima del commit, il messaggio sarà rielaborato.
+         *    Esempio:
+         *      record = consumer.poll();
+         *      process(record);
+         *      consumer.commitSync(); // commit bloccante e più sicuro (gestisce anche eventuali errori di rete)
+         *
+         * In alternativa a commitSync(), si può usare commitAsync(), che è non bloccante e generalmente più veloce, ma non garantisce il retry automatico e può fallire silenziosamente.
+         * È utile per scenari ad alta performance dove una minima perdita di offset è accettabile.
+         *    Esempio:
+         *      record = consumer.poll();
+         *      process(record);
+         *      consumer.commitAsync(); // attenzione: errori non gestiti automaticamente
+         *
+         *    NB: puoi anche combinare commitAsync() con una callback per gestire eventuali errori:
+         *      consumer.commitAsync((offsets, exception) -> {
+         *          if (exception != null) {
+         *              // log o retry manuale
+         *              System.err.println("Commit fallito: " + exception.getMessage());
+         *          }
+         *      });
+         *
+         *    NB: questi metodi hanno anche signature in cui si può specificare l'offset fino al quale fare commit
+         */
+
 
         // Specifica cosa fare se il gruppo consumer non ha un valido offset salvato in precedenza:
         // - "earliest": consuma dall'inizio del topic

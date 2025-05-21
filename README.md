@@ -5,6 +5,9 @@ Include:
 - Un `producer` 
 - Un `producerEOS`
 - un `consumer`
+- un generatore di messaggi sulla temperatura registrata da un termometro, che utilizza il producer EOS
+- un generatore di messaggi sul colore di un semaforo, che utilizza il producer EOS
+- un partitioner personalizzato, leggermente differente dal default
 
 ---
 

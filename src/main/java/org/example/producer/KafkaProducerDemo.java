@@ -107,6 +107,31 @@ public class KafkaProducerDemo implements MessageProducer{
         // Configura "delivery.timeout.ms", il tempo massimo totale per la consegna del messaggio (batching + retries + in-flight)
         props.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, "60000"); // 60 secondi
 
+        /*
+         * === PARTITIONING ===
+         * Quando un Kafka producer invia un messaggio a un topic, Kafka deve decidere *a quale partizione* di quel topic
+         * inviarlo. Questo processo è chiamato "partitioning".
+         *
+         * Il comportamento di default del partitioning:
+         * 1. Con CHIAVE specificata:
+         *    - Kafka usa la hash della chiave per determinare la partizione:
+         *          partition = hash(key) % numero_partizioni
+         *    - Questo garantisce che tutti i messaggi con la stessa chiave finiscano sempre nella stessa partizione,
+         *      mantenendo così l'ORDINE di quei messaggi.
+         * 2. Senza CHIAVE (key = null):
+         *    - Kafka assegna le partizioni in modo round-robin tra le partizioni disponibili per quel topic.
+         *    - L'assegnazione round-robin è mantenuta per produttore (producer instance).
+         *    - In questo caso, Kafka non garantisce alcun ordine dei messaggi.
+         *
+         * È possibile personalizzare la logica di partizionamento implementando un proprio `Partitioner` e specificandolo nella configurazione del producer.
+         *
+         * Configurazione opzionale per personalizzare il partizionamento:
+         *   props.put(ProducerConfig.PARTITIONER_CLASS_CONFIG, "com.mio.PartiionerPersonalizzato");
+         */
+        // "partitioner.class" specifica un partitioner personalizzato da usare
+        props.put(ProducerConfig.PARTITIONER_CLASS_CONFIG, "org.example.partitioner.CustomPartitioner");
+
+
         this.producer = new KafkaProducer<>(props);
     }
 
