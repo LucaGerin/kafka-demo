@@ -108,6 +108,29 @@ public class KafkaConsumerDemo implements Runnable {
         //          Potrebbero essere letti messaggi che poi saranno annullati → rischio di inconsistenza.
         props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 
+        /*
+         * ================================
+         * Kafka Group Coordinator
+         * ================================
+         * Il Group Coordinator è un componente del broker Kafka che gestisce i consumer appartenenti a uno stesso consumer group.
+         * Le sue responsabilità includono:
+         * - assegnare partizioni ai consumer (rebalance), quando un cosumer lascia un gruppo, joina u gruppo, cambia subscription ai topic, o se cambia il numero di partizioni.
+         * - monitorare lo stato dei consumer tramite heartbeat,
+         * - considerare un consumer "morto" se non comunica entro una certa finestra temporale,
+         * - scatenare il ribilanciamento (rebalance) quando cambia la composizione del gruppo, chiedendo al group leader di eseguirlo.
+         *
+         * I parametri session.timeout.ms, heartbeat.interval.ms, session.timeout.ms controllano il comportamento di questa comunicazione.
+         */
+        // "session.timeout.ms" configura il timeout della sessione consumer, cioè il tempo massimo che un consumer può restare "silente" (Default: 10.000 ms (10 secondi))
+        props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "15000");  // Kafka considererà il consumer morto se non riceve heartbeat entro 15 secondi
+
+        // "heartbeat.interval.ms"configura l'intervallo tra heartbeat, cioè quanto spesso il consumer invia segnali heartbeat al coordinator (Default: 3.000 ms)
+        props.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, "5000");
+
+        // "session.timeout.ms" è il timeout massimo tra due chiamate consecutive a poll() (Default: 300.000 ms (5 minuti))
+        props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, "300000");  // Se il consumer impiega più di questo tempo a chiamare poll(), viene considerato "lento" e rimosso dal gruppo
+
+
         this.consumer = new KafkaConsumer<>(props);
     }
 
@@ -249,6 +272,8 @@ public class KafkaConsumerDemo implements Runnable {
      * 3. Esegue un seek esplicito su ciascuna partizione a quell'offset.
      *
      * Utile per iniziare a leggere da un certo punto nel tempo (es. "da ieri alle 12:00").
+     * NB: in kafka l'ordine è dato dall'arrivo, i messaggi non sono ordinati per timestamp!
+     * Quindi potrei tornare a un certo timestamp ma leggere successivamente messaggi con timestamp precedente
      *
      * @param timestamp il valore del timestamp (in millisecondi) da cui iniziare a leggere.
      */
