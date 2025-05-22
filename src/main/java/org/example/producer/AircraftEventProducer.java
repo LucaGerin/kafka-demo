@@ -73,7 +73,7 @@ public class AircraftEventProducer implements MessageProducer<AircraftKey, Aircr
         producer.send(record, (metadata, exception) -> {
             if (exception == null) {
                 String log = String.format(
-                        ANSI_LIGHT_CYAN + "[Producer %s]" + ANSI_RESET + ": ✅ Messaggio con key=\"%s\", value=\"%s\", timestamp=%s \n\t\t\t\tinviato al topic \"%s\", partizione %d, offset=%d",
+                        ANSI_LIGHT_CYAN + "[Producer %s]" + ANSI_RESET + ": ✅ Messaggio con key=\"%s\", \n\t\t\t\tvalue=\"%s\", \n\t\t\t\ttimestamp=%s \n\t\t\t\tinviato al topic \"%s\", partizione %d, offset=%d",
                         producerId,
                         record.key(),
                         record.value(),

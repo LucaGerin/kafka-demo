@@ -4,6 +4,7 @@ import com.example.avro.AircraftEvent;
 import com.example.avro.AircraftKey;
 import org.example.config.KafkaTopicInitializer;
 import org.example.consumer.KafkaConsumerDemo;
+import org.example.msgGenerator.AircraftMovementGenerator;
 import org.example.msgGenerator.ThermometerMessageGenerator;
 import org.example.msgGenerator.TrafficLightMessageGenerator;
 import org.example.producer.AircraftEventProducer;
@@ -55,18 +56,21 @@ public class App {
         // Lista dei Thread dei generatori
         List<Thread> generatorThreads = new ArrayList<>();
 
-        // Avvia due generatori messaggi che usano i due producer
-        Thread generatorStandard = new Thread(new ThermometerMessageGenerator(standardProducer, "Thermo1"), "Thread-Generator-P1");
+        // Avvia i generatori messaggi che usano i due producer
+        Thread generatorStandard = new Thread(new ThermometerMessageGenerator(standardProducer, "ThermoGen1"), "Thread-Generator-P1");
         generatorStandard.start();
         generatorThreads.add(generatorStandard);
 
         Thread generatorEOS = null;
         if(eos) {
-            generatorEOS = new Thread(new TrafficLightMessageGenerator(eosProducer, "TF1"), "Thread-Generator-EOS");
+            generatorEOS = new Thread(new TrafficLightMessageGenerator(eosProducer, "TFGen1"), "Thread-Generator-EOS1");
             generatorEOS.start();
             generatorThreads.add(generatorEOS);
         }
 
+        Thread generatorAir = new Thread( new AircraftMovementGenerator(airProducer, "AirGen1"), "Thread-Generator-Air1");
+        generatorAir.start();
+        generatorThreads.add(generatorAir);
 
         // Attendi 10 secondi e poi ferma tutto
         try {
