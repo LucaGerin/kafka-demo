@@ -129,7 +129,7 @@ public class StringProducerEOSDemo implements MessageProducer<String, String>{
 
     @Override
     public void close() {
-        System.out.printf(ANSI_BLUE + "[Producer %s]" + ANSI_RESET + ": Chiudo il producer con Exactly-Once Semantic policy.\n",this. producerId);
+        System.out.printf(ANSI_BLUE + "[Producer %s]" + ANSI_RESET + ": Chiudo il producer.\n",this. producerId);
         producer.close();
     }
 

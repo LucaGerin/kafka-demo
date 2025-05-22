@@ -3,10 +3,12 @@ package org.example;
 import com.example.avro.AircraftEvent;
 import com.example.avro.AircraftKey;
 import org.example.config.KafkaTopicInitializer;
-import org.example.consumer.KafkaConsumerDemo;
+import org.example.consumer.StringMessageConsumerDemo;
+import org.example.consumer.MessageConsumer;
 import org.example.msgGenerator.AircraftMovementGenerator;
 import org.example.msgGenerator.ThermometerMessageGenerator;
 import org.example.msgGenerator.TrafficLightMessageGenerator;
+import org.example.msgUser.StringMessagePrinter;
 import org.example.producer.AircraftEventProducer;
 import org.example.producer.StringProducerDemo;
 import org.example.producer.StringProducerEOSDemo;
@@ -37,12 +39,22 @@ public class App {
         // Crea il topic se non esiste
         KafkaTopicInitializer.createTopicIfNotExists();
 
-        // Lancia il consumer su thread separato
-        KafkaConsumerDemo consumerRunnable = new KafkaConsumerDemo(DEMO_TOPIC, BOOTSTRAP_SERVERS, GROUP_ID, "C-1");
-        Thread consumerThread = new Thread(consumerRunnable);
-        consumerThread.start();
+        //  === Lista dei consumer ===
+        List<MessageConsumer<?, ?>> consumers = new ArrayList<>();
 
-        // Lista dei producer
+        // Lancia il consumer di String su thread separato
+        MessageConsumer<String, String> stringConsumer = new StringMessageConsumerDemo(DEMO_TOPIC, BOOTSTRAP_SERVERS, GROUP_ID, "C-1");
+        consumers.add(stringConsumer);
+
+        // === Lista dei thread che usano i consumer ===
+        List<Thread> consumerUserThreads = new ArrayList<>();
+
+        // Lancia il printer associato al consumer di string
+        Thread printerThread = new Thread(new StringMessagePrinter(stringConsumer, "Print-1"));
+        printerThread.start();
+        consumerUserThreads.add(printerThread);
+
+        // === Lista dei producer ===
         List<MessageProducer<?, ?>> producers = new ArrayList<>();
 
         // Crea i producer
@@ -53,7 +65,7 @@ public class App {
         MessageProducer<AircraftKey, AircraftEvent> airProducer = new AircraftEventProducer(AIR_TOPIC, BOOTSTRAP_SERVERS, SCHEMA_REGISTRY_URL,"A-1");
         producers.add(airProducer);
 
-        // Lista dei Thread dei generatori
+        // === Lista dei Thread dei generatori ===
         List<Thread> generatorThreads = new ArrayList<>();
 
         // Avvia i generatori messaggi che usano i due producer
@@ -72,7 +84,8 @@ public class App {
         generatorAir.start();
         generatorThreads.add(generatorAir);
 
-        // Attendi 10 secondi e poi ferma tutto
+
+        // === Attendi 10 secondi e poi ferma tutto ===
         try {
             Thread.sleep(10000);
 
@@ -96,9 +109,33 @@ public class App {
                 }
             }
 
-            System.out.println("🛑 Chiudo il Consumer...");
-            consumerRunnable.shutdown();
-            consumerThread.join();
+            System.out.println("⏳ Aspetto 2 secondi...");
+            Thread.sleep(2000);
+
+            System.out.println("⏳ Fermo gli user di messaggi...");
+            for (Thread userThread : consumerUserThreads) {
+                userThread.interrupt(); // segnala al thread che deve terminare
+            }
+            for (Thread userThread : consumerUserThreads) {
+                try {
+                    userThread.join(); // attende che il thread finisca
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    System.err.println("⛔ Interrotto mentre aspettavo uno user consumer.");
+                }
+            }
+
+            System.out.println("🛑 Chiudo i consumer...");
+            for (MessageConsumer<?, ?> consumer : consumers) {
+                try {
+                    consumer.close();
+                } catch (Exception e) {
+                    System.err.printf("Errore durante la chiusura del consumer con id %s: %s\n",
+                            consumer.getConsumerId(), e.getMessage());
+                }
+            }
+
+
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

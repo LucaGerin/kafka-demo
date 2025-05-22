@@ -8,23 +8,26 @@ import org.apache.kafka.common.TopicPartition;
 import org.example.util.TimestampFormatter;
 
 import java.time.Duration;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-public class KafkaConsumerDemo implements Runnable {
+public class StringMessageConsumerDemo implements MessageConsumer<String, String> {
 
     private final String consumerId;
     private final KafkaConsumer<String, String> consumer;
     private final String topic;
-    private volatile boolean keepConsuming = true;
 
     // Codici ANSI per il colore
     public static final String ANSI_RESET = "\u001B[0m";
     public static final String ANSI_GREEN = "\u001B[32m";
 
-    public KafkaConsumerDemo(String topic, String bootstrapServers, String groupId, String consumerId) {
+    /**
+     * Costruttore
+     * @param topic
+     * @param bootstrapServers
+     * @param groupId
+     * @param consumerId
+     */
+    public StringMessageConsumerDemo(String topic, String bootstrapServers, String groupId, String consumerId) {
         this.topic = topic;
         this.consumerId = consumerId;
 
@@ -174,11 +177,19 @@ public class KafkaConsumerDemo implements Runnable {
 
 
         this.consumer = new KafkaConsumer<>(props);
+
+        // Si iscrive a una lista di topic (in questo caso uno solo), e attacca anche un listener
+        // NB: subscribe(Collection<String> topics) sostituisce e sovrascrive la lista di topic precedente
+        ConsumerRebalanceListener listener = createRebalanceListener();
+        this.consumer.subscribe(Collections.singletonList(topic), listener);
+
+        System.out.println(ANSI_GREEN + "[Consumer " + consumerId + "]" + ANSI_RESET + ": Consumer avviato. In attesa di messaggi...");
     }
 
-    @Override
-    public void run() {
-
+    /**
+     * Metodo per creare un rebalance listener che stampa su System out le partizioni e i loro offset di partenza
+     */
+    private ConsumerRebalanceListener createRebalanceListener() {
         // Listener per gestire il rebalance
         /*
          * === ConsumerRebalanceListener ===
@@ -194,14 +205,19 @@ public class KafkaConsumerDemo implements Runnable {
          *    - Chiamato DOPO che le nuove partizioni sono state assegnate.
          *    - Qui si possono, ad esempio, eseguire operazioni di seek (es: seekToBeginning), logging, ecc.
          */
-        ConsumerRebalanceListener listener = new ConsumerRebalanceListener() {
+        return new ConsumerRebalanceListener() {
             @Override
             public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-                // Nessuna azione necessaria qui
+                // Azioni da eseguire PRIMA che le partizioni vengano rimosse dal consumer
+                System.out.printf(ANSI_GREEN + "[Consumer %s]" + ANSI_RESET + ":⚠️  Partizioni revocate: %s\n", consumerId, partitions);
             }
 
             @Override
             public void onPartitionsAssigned(Collection<TopicPartition> partitions) { //NB: le partizioni sono assegnate quando un poll() scarica i metadata! Quindi questo metodo parte dopo il primo poll() dopo una modifica alle partizioni.
+
+                // Azioni da eseguire DOPO che le partizioni sono state assegnate
+                System.out.printf(ANSI_GREEN + "[Consumer %s]" + ANSI_RESET + ": Partizioni assegnate: %s\n", consumerId, partitions);
+
 
                 /*
                  * ======================
@@ -234,8 +250,7 @@ public class KafkaConsumerDemo implements Runnable {
                 for (TopicPartition partition : partitions) {
                     try {
                         long offset = consumer.position(partition); // Offset da cui riprenderà la lettura
-                        System.out.println(ANSI_GREEN + "[Consumer " + consumerId + "]" + ANSI_RESET +
-                                " Partition " + partition.partition() + " - Starting offset: " + offset);
+                        System.out.println(ANSI_GREEN + "[Consumer " + consumerId + "]" + ANSI_RESET + ": Partition " + partition.partition() + " - Starting offset: " + offset);
                     } catch (Exception e) {
                         System.err.println("[Consumer " + consumerId + "]: Errore nel recupero offset: " + e.getMessage());
                     }
@@ -256,54 +271,42 @@ public class KafkaConsumerDemo implements Runnable {
 
             }
         };
-
-        try {
-            // Si iscrive a una lista di topic (in questo caso uno solo)
-            // NB: subscribe(Collection<String> topics) sostituisce e sovrascrive la lista di topic precedente
-            consumer.subscribe(Collections.singletonList(topic), listener);
-            System.out.println(ANSI_GREEN + "[Consumer " + consumerId + "]" + ANSI_RESET + ": Consumer avviato. In attesa di messaggi...");
-
-
-
-
-
-
-
-            // Ciclo principale: continua a leggere finché il thread non viene interrotto
-            while (keepConsuming && !Thread.currentThread().isInterrupted()) {
-                // Effettua il polling: attende fino a 1 secondo per ricevere nuovi messaggi
-                // Il consumer "interroga" Kafka per nuovi messaggi:
-                // - Se ce ne sono, li riceve
-                // - Se non ce ne sono, riceve una risposta vuota
-                ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(1000));
-
-
-
-                // Elabora ogni messaggio ricevuto
-                for (ConsumerRecord<String, String> record : records) {
-
-                    // Stampa il messaggio
-                    System.out.printf(ANSI_GREEN +"[Consumer " + consumerId + "]" + ANSI_RESET + ": ⬇️ Ricevuto: topic=%s, partition=%d, offset=%d, key=%s, timestamp=%s,\n\t\t\t\tvalue=\"%s\" \n",
-                            record.topic(), record.partition(), record.offset(), record.key(), TimestampFormatter.format(record.timestamp()), record.value());
-                }
-            }
-        } catch (WakeupException e) {
-            System.out.println(ANSI_GREEN +"[Consumer " + consumerId + "]" + ANSI_RESET + ": ⚠️ Consumer svegliato per chiusura.");
-        } catch (InterruptException e) {
-            // Il thread è stato interrotto (es. da consumerThread.interrupt())
-            System.out.println("----------------");
-            System.out.println(ANSI_GREEN +"[Consumer " + consumerId + "]" + ANSI_RESET + ": ℹ️ Consumer interrotto.");
-        } catch (Exception e) {
-            System.err.println("[Consumer " + consumerId + "]: ❌ Errore nel consumer: " + e.getMessage());
-        } finally {
-            consumer.close();
-            System.out.println(ANSI_GREEN +"[Consumer " + consumerId + "]" + ANSI_RESET + ": 🔚 Consumer chiuso.");
-        }
     }
 
-    public void shutdown() {
-        keepConsuming = false;
-        consumer.wakeup();
+    @Override
+    public String getConsumerId() {
+        return this.consumerId;
+    }
+
+    @Override
+    public List<ConsumerRecord<String, String>> pollMessages() {
+
+        List<ConsumerRecord<String, String>> results = new ArrayList<>();
+
+        try {
+            // Effettua il polling: attende fino a 1 secondo per ricevere nuovi messaggi
+            // Il consumer "interroga" Kafka per nuovi messaggi:
+            // - Se ce ne sono, li riceve
+            // - Se non ce ne sono, riceve una risposta vuota
+            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(1000));
+
+            for (ConsumerRecord<String, String> record : records) {
+                results.add(record);
+            }
+
+        } catch (WakeupException | InterruptException e) {
+                // Expected if shutdown is triggered via interrupt()
+                Thread.currentThread().interrupt(); // ripristina il flag di interrupt
+        }
+
+        return results;
+    }
+
+    @Override
+    public void close() {
+        // Chiude il consumer
+        this.consumer.close();
+        System.out.println(ANSI_GREEN + "[Consumer " + this.consumerId + "]" + ANSI_RESET + ": Consumer chiuso.");
     }
 
 
@@ -312,7 +315,6 @@ public class KafkaConsumerDemo implements Runnable {
      * 1. Costruisce una mappa con tutte le partizioni assegnate e il timestamp desiderato.
      * 2. Chiede a Kafka di restituire, per ogni partizione, l'offset corrispondente a quel timestamp.
      * 3. Esegue un seek esplicito su ciascuna partizione a quell'offset.
-     *
      * Utile per iniziare a leggere da un certo punto nel tempo (es. "da ieri alle 12:00").
      * NB: in kafka l'ordine è dato dall'arrivo, i messaggi non sono ordinati per timestamp!
      * Quindi potrei tornare a un certo timestamp ma leggere successivamente messaggi con timestamp precedente

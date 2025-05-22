@@ -93,7 +93,7 @@ public class AircraftEventProducer implements MessageProducer<AircraftKey, Aircr
 
     @Override
     public void close() {
-        System.out.println("[Producer " + producerId + "] Chiusura del producer...");
+        System.out.println("[Producer " + producerId + "] Chiudo il producer.");
         producer.flush();
         producer.close();
     }
