@@ -4,9 +4,6 @@ import org.apache.kafka.clients.producer.*;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.example.util.TimestampFormatter;
 
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.Properties;
 
 public class KafkaProducerDemo implements MessageProducer<String, String>{

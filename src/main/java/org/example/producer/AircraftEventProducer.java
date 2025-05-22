@@ -2,12 +2,9 @@ package org.example.producer;
 
 import com.example.avro.AircraftKey;
 import com.example.avro.AircraftEvent;
-import com.example.avro.AircraftEventType;
-import com.example.avro.Airline;
+import io.confluent.kafka.serializers.KafkaAvroSerializerConfig;
 import org.apache.kafka.clients.producer.*;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
-import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
-import org.example.producer.MessageProducer;
 import org.example.util.TimestampFormatter;
 
 import java.util.Properties;
@@ -34,7 +31,7 @@ public class AircraftEventProducer implements MessageProducer<AircraftKey, Aircr
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
 
         // Specifica l'URL dello Schema Registry per la registrazione e il recupero degli schemi Avro
-        props.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl);
+        props.put(KafkaAvroSerializerConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl);
 
         /*
          * Imposta la strategia di naming per i subject dello Schema Registry relativi alla CHIAVE del messaggio Kafka.
