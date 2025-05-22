@@ -84,6 +84,9 @@ kafka-demo/
 
 ## 🚀 Gestione dei container che realizzano il cluster Kafka
 
+> **Tutti i comandi vanno eseguiti dal terminale del tuo sistema operativo**, nella stessa cartella dove si trova il file `docker-compose.yaml`.
+> Assicurati che i container Kafka siano in esecuzione (`docker compose up -d`).
+
 ### ▶️ Avviare i container con Docker Compose
 
 Prima di tutto, assicurati che l'Engine Docker sia avviato.
@@ -166,9 +169,6 @@ docker compose down -v
 ## 🧪 Comandi utili da terminale
 
 Puoi usare questi comandi tramite Docker per gestire i topic, testare i messaggi e monitorare il cluster.
-
-> **Tutti i comandi vanno eseguiti dal terminale del tuo sistema operativo**, nella stessa cartella dove si trova il file `docker-compose.yaml`.
-> Assicurati che i container Kafka siano in esecuzione (`docker compose up -d`).
 
 ---
 
@@ -255,3 +255,78 @@ Puoi visualizzare gli schemi registrati nel registry in due modi:
   curl http://localhost:8081/subjects
   ```
 ---
+
+## 🧪 Utilizzare Producer e Consumer Avro da CLI (con Schema Registry)
+
+Se vuoi **testare manualmente** l'invio e la lettura di messaggi Avro dal terminale, puoi usare i tool `kafka-avro-console-producer` e `kafka-avro-console-consumer`, già inclusi nell'immagine `confluentinc/cp-kafka`.
+
+> 💡 I comandi seguenti vanno eseguiti **all'interno del container Docker** (es. `kafka1`), oppure adattati per PowerShell/WSL2.  
+> ⚠️ Assicurati che lo Schema Registry sia attivo su `http://localhost:8081`.
+
+---
+
+### ▶️ Entrare nel container `kafka1`
+
+```bash
+docker exec -it kafka1 bash
+```
+
+### 📤 Avro Producer da console
+
+Per inviare un messaggio Avro al topic `aircraft-topic`:
+```bash
+kafka-avro-console-producer \
+  --topic aircraft-topic \
+  --bootstrap-server kafka1:9092 \
+  --property schema.registry.url=http://schema-registry:8081 \
+  --property key.schema='{
+     "type": "record",
+     "name": "AircraftKey",
+     "namespace": "com.example.avro",
+     "fields": [
+       {"name": "tailNumber", "type": "string"},
+       {"name": "model", "type": "string"},
+       {"name": "airline", "type": {
+         "type": "enum",
+         "name": "Airline",
+         "symbols": ["RYANAIR", "DELTA", "LUFTHANSA", "EMIRATES", "AIRFRANCE", "EASYJET", "UNITED", "QATAR", "ALITALIA"]
+       }}
+     ]
+   }' \
+  --property value.schema='{
+     "type": "record",
+     "name": "AircraftEvent",
+     "namespace": "com.example.avro",
+     "fields": [
+       {"name": "eventId", "type": "string"},
+       {"name": "eventType", "type": {"type": "enum", "name": "AircraftEventType", "symbols": ["DEPARTURE", "ARRIVAL"]}},
+       {"name": "airportCode", "type": "string"},
+       {"name": "scheduledTime", "type": "long"},
+       {"name": "actualTime", "type": "long"}
+     ]
+   }' \
+  --property parse.key=true \
+  --property key.separator=:
+
+```
+Una volta aperto il prompt, puoi inviare messaggi Avro come JSON su una sola riga (key e value separati da `:`):
+```bash
+{"tailNumber":"EI-ABC","model":"A320","airline":"RYANAIR"}:{"eventId":"EV002","eventType":"ARRIVAL","airportCode":"FCO","scheduledTime":1716400200000,"actualTime":1716400250000}
+
+
+```
+
+### 📤 Avro Consumer da console
+
+Per leggere messaggi Avro dal topic `aircraft-topic`:
+```bash
+kafka-avro-console-consumer \
+  --topic aircraft-topic \
+  --bootstrap-server kafka1:9092 \
+  --from-beginning \
+  --property schema.registry.url=http://schema-registry:8081 \
+  --property print.key=true \
+  --property key.separator=:
+
+```
+Questo consumer mostrerà i record Avro deserializzati.
