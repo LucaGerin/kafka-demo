@@ -4,11 +4,16 @@ Questo progetto dimostra come utilizzare **Apache Kafka** con **Java 17 (Eclipse
 Include:
 - Un `producer` 
 - Un `producerEOS`
-- un `consumer`
-- un generatore di messaggi sulla temperatura registrata da un termometro, che utilizza il producer EOS
-- un generatore di messaggi sul colore di un semaforo, che utilizza il producer EOS
-- un partitioner personalizzato, leggermente differente dal default
-
+- Un `consumer`
+- Un generatore di messaggi sulla temperatura registrata da un termometro, che utilizza il producer EOS
+- Un generatore di messaggi sul colore di un semaforo, che utilizza il producer EOS
+- Un partitioner personalizzato, leggermente differente dal default
+- Uno `schema registry` dove vengono salvati gli schemi Avro utilizzati
+- Due schemi Avro, uno per una key e uno per un value
+- Un `AircraftEventProducer` che consente l'invio di messaggi seguendo alcuni schemi Avro salvati
+- Un generatore di messaggi sulla partenza o arrivo di aerei in degli aeroporti
+- Un `AircraftEventConsumer`
+- 
 ---
 
 ## 📦 Componenti utilizzati
@@ -227,4 +232,26 @@ kafka-topics --delete --topic demo-topic --bootstrap-server localhost:9092
 
 ➡️ Elimina il topic `demo-topic` dal cluster.
 
+---
+
+## 📘 Schema Registry
+
+Questo progetto utilizza un Kafka Producer configurato con **Avro** e **Schema Registry**, quindi ogni schema (sia per la **key** che per il **value**) viene automaticamente registrato nel **Schema Registry** all’indirizzo specificato tramite la proprietà:
+```bash
+schema.registry.url = http://localhost:8081
+```
+#### 🔍 Come visualizzare gli schemi registrati
+
+Puoi visualizzare gli schemi registrati nel registry in due modi:
+
+- **Via browser**  
+  Vai all'indirizzo:
+  ```bash
+  http://localhost:8081/subjects
+  ```
+- **Via terminale usando `curl`**
+  Per vedere l'elenco dei subject registrati:
+  ```bash
+  curl http://localhost:8081/subjects
+  ```
 ---
