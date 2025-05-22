@@ -24,7 +24,7 @@ public class StringMessagePrinter implements Runnable{
 
     @Override
     public void run() {
-        System.out.printf(ANSI_LIGHT_GREEN + "[Printer for consumer %s]" + ANSI_RESET + ": Avviato...\n", consumer.getConsumerId());
+        System.out.printf(ANSI_LIGHT_GREEN + "[StringPrinter %s]" + ANSI_RESET + ": Avviato...\n", this.printerId);
 
         try {
             while (!Thread.currentThread().isInterrupted()) {
@@ -33,7 +33,7 @@ public class StringMessagePrinter implements Runnable{
                 for (ConsumerRecord<String, String> record : messages) {
 
                     // Stampa il messaggio
-                    System.out.printf(ANSI_LIGHT_GREEN +"[Printer " + printerId + "]" + ANSI_RESET + ": ⬇️ Ricevuto: topic=%s, partition=%d, offset=%d, \n\t\t\t\tkey=%s, timestamp=%s,\n\t\t\t\tvalue=\"%s\" \n",
+                    System.out.printf(ANSI_LIGHT_GREEN +"[StringPrinter " + printerId + "]" + ANSI_RESET + ": ⬇️ Ricevuto: topic=%s, partition=%d, offset=%d, \n\t\t\t\tkey=%s, timestamp=%s,\n\t\t\t\tvalue=\"%s\" \n",
                             record.topic(), record.partition(), record.offset(), record.key(), TimestampFormatter.format(record.timestamp()), record.value());
                 }
 
@@ -41,9 +41,9 @@ public class StringMessagePrinter implements Runnable{
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            System.out.printf(ANSI_LIGHT_GREEN +"[Printer " + printerId + "]" + ANSI_RESET + ": Interrotto.\n");
+            System.out.printf(ANSI_LIGHT_GREEN +"[StringPrinter " + printerId + "]" + ANSI_RESET + ": Interrotto.\n");
         } finally {
-            System.out.printf(ANSI_LIGHT_GREEN + "[Printer for consumer %s]" + ANSI_RESET + ": Terminato.\n", consumer.getConsumerId());
+            System.out.printf(ANSI_LIGHT_GREEN + "[StringPrinter %s for consumer %s]" + ANSI_RESET + ": Terminato.\n", this.printerId, consumer.getConsumerId());
         }
     }
 

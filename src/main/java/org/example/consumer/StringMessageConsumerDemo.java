@@ -252,7 +252,7 @@ public class StringMessageConsumerDemo implements MessageConsumer<String, String
                         long offset = consumer.position(partition); // Offset da cui riprenderà la lettura
                         System.out.println(ANSI_GREEN + "[Consumer " + consumerId + "]" + ANSI_RESET + ": Partition " + partition.partition() + " - Starting offset: " + offset);
                     } catch (Exception e) {
-                        System.err.println("[Consumer " + consumerId + "]: Errore nel recupero offset: " + e.getMessage());
+                        System.err.printf("[Consumer " + consumerId + "]: Errore nel recupero offset partizione %d: %s%n", partition.partition(), e.getMessage());
                     }
                 }
                 /*

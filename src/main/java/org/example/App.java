@@ -3,11 +3,13 @@ package org.example;
 import com.example.avro.AircraftEvent;
 import com.example.avro.AircraftKey;
 import org.example.config.KafkaTopicInitializer;
+import org.example.consumer.AircraftEventConsumer;
 import org.example.consumer.StringMessageConsumerDemo;
 import org.example.consumer.MessageConsumer;
 import org.example.msgGenerator.AircraftMovementGenerator;
 import org.example.msgGenerator.ThermometerMessageGenerator;
 import org.example.msgGenerator.TrafficLightMessageGenerator;
+import org.example.msgUser.AircraftEventPrinter;
 import org.example.msgUser.StringMessagePrinter;
 import org.example.producer.AircraftEventProducer;
 import org.example.producer.StringProducerDemo;
@@ -46,6 +48,11 @@ public class App {
         MessageConsumer<String, String> stringConsumer = new StringMessageConsumerDemo(DEMO_TOPIC, BOOTSTRAP_SERVERS, GROUP_ID, "C-1");
         consumers.add(stringConsumer);
 
+        // Lancia il consumer di eventi Avro per gli aircraft su thread separato
+        MessageConsumer<AircraftKey, AircraftEvent> airConsumer =
+                new AircraftEventConsumer(AIR_TOPIC, BOOTSTRAP_SERVERS, GROUP_ID, SCHEMA_REGISTRY_URL, "C-Avro-1");
+        consumers.add(airConsumer);
+
         // === Lista dei thread che usano i consumer ===
         List<Thread> consumerUserThreads = new ArrayList<>();
 
@@ -53,6 +60,12 @@ public class App {
         Thread printerThread = new Thread(new StringMessagePrinter(stringConsumer, "Print-1"));
         printerThread.start();
         consumerUserThreads.add(printerThread);
+
+        // Lancia il printer associato agli eventi Avro
+        Thread aircraftPrinterThread = new Thread(new AircraftEventPrinter(airConsumer, "AirPrint-1"));
+        aircraftPrinterThread.start();
+        consumerUserThreads.add(aircraftPrinterThread);
+
 
         // === Lista dei producer ===
         List<MessageProducer<?, ?>> producers = new ArrayList<>();
