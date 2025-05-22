@@ -105,6 +105,7 @@ Questo avvierà:
     - `kafka1`: `localhost:9092`
     - `kafka2`: `localhost:9093`
     - `kafka3`: `localhost:9094`
+ -   **1 Schema registry**
 
 Per verificare che i container siano attivi:
 ```bash
