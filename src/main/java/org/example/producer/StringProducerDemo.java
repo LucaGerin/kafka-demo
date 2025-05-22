@@ -6,7 +6,7 @@ import org.example.util.TimestampFormatter;
 
 import java.util.Properties;
 
-public class KafkaProducerDemo implements MessageProducer<String, String>{
+public class StringProducerDemo implements MessageProducer<String, String>{
 
     private final String producerId;
     private final String topic;
@@ -16,7 +16,7 @@ public class KafkaProducerDemo implements MessageProducer<String, String>{
     public static final String ANSI_RESET = "\u001B[0m";
     public static final String ANSI_CYAN = "\u001B[36m";
 
-    public KafkaProducerDemo(String topic, String bootstrapServers, String producerId) {
+    public StringProducerDemo(String topic, String bootstrapServers, String producerId) {
         this.topic = topic;
         this.producerId = producerId;
 

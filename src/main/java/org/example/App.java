@@ -8,8 +8,8 @@ import org.example.msgGenerator.AircraftMovementGenerator;
 import org.example.msgGenerator.ThermometerMessageGenerator;
 import org.example.msgGenerator.TrafficLightMessageGenerator;
 import org.example.producer.AircraftEventProducer;
-import org.example.producer.KafkaProducerDemo;
-import org.example.producer.KafkaProducerEOSDemo;
+import org.example.producer.StringProducerDemo;
+import org.example.producer.StringProducerEOSDemo;
 import org.example.producer.MessageProducer;
 
 import java.util.ArrayList;
@@ -46,9 +46,9 @@ public class App {
         List<MessageProducer<?, ?>> producers = new ArrayList<>();
 
         // Crea i producer
-        MessageProducer<String, String> standardProducer = new KafkaProducerDemo(DEMO_TOPIC, BOOTSTRAP_SERVERS, "P-1");
+        MessageProducer<String, String> standardProducer = new StringProducerDemo(DEMO_TOPIC, BOOTSTRAP_SERVERS, "P-1");
         producers.add(standardProducer);
-        MessageProducer<String, String> eosProducer = new KafkaProducerEOSDemo(DEMO_TOPIC, BOOTSTRAP_SERVERS, "eos-producer-1", "P-eos-1", true);
+        MessageProducer<String, String> eosProducer = new StringProducerEOSDemo(DEMO_TOPIC, BOOTSTRAP_SERVERS, "eos-producer-1", "P-eos-1", true);
         producers.add(eosProducer);
         MessageProducer<AircraftKey, AircraftEvent> airProducer = new AircraftEventProducer(AIR_TOPIC, BOOTSTRAP_SERVERS, SCHEMA_REGISTRY_URL,"A-1");
         producers.add(airProducer);

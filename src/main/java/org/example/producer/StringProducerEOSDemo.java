@@ -25,7 +25,7 @@ import java.util.Random;
  * che in questa classe non è utilizzato, non essendo il caso.
  */
 
-public class KafkaProducerEOSDemo implements MessageProducer<String, String>{
+public class StringProducerEOSDemo implements MessageProducer<String, String>{
 
 
     private final String producerId;
@@ -37,7 +37,7 @@ public class KafkaProducerEOSDemo implements MessageProducer<String, String>{
     public static final String ANSI_RESET = "\u001B[0m";
     public static final String ANSI_BLUE = "\u001B[34m";
 
-    public KafkaProducerEOSDemo(String topic, String bootstrapServers, String transactionalId, String producerId, boolean simulateErrors) {
+    public StringProducerEOSDemo(String topic, String bootstrapServers, String transactionalId, String producerId, boolean simulateErrors) {
         this.topic = topic;
         this.producerId = producerId;
         this.simulateErrors = simulateErrors;
