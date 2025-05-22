@@ -15,8 +15,9 @@ public class KafkaTopicInitializer {
     // Indirizzo del broker Kafka (usare il nome del container quando si esegue dentro Docker)
     private static final String BOOTSTRAP_SERVERS = "kafka1:9092";
 
-    // Nome del topic da verificare o creare
-    private static final String TOPIC_NAME = "demo-topic";
+    // Nome dei topic da verificare o creare
+    private static final String DEMO_TOPIC_NAME = "demo-topic";
+    private static final String AIR_TOPIC_NAME = "aircraft-topic";
 
     // Numero di partizioni del topic
     private static final int numPartitions = 3;
@@ -40,49 +41,13 @@ public class KafkaTopicInitializer {
             Set<String> topicNames = adminClient.listTopics().names().get();
             System.out.println("📋 Topic presenti nel cluster: " + topicNames);
 
-            // Se il topic desiderato non esiste, procedi alla creazione
-            if (!topicNames.contains(TOPIC_NAME)) {
+            // Recupera la lista dei broker attualmente attivi nel cluster
+            Collection<Node> brokerNodes = adminClient.describeCluster().nodes().get(); //Ogni Node contiene informazioni come: id(). host(), port() ,isEmpty()
+            int brokerCount = brokerNodes.size();
+            System.out.println("📡 Broker attivi nel cluster: " + brokerCount);
 
-                // Recupera la lista dei broker attualmente attivi nel cluster
-                Collection<Node> brokerNodes = adminClient.describeCluster().nodes().get(); //Ogni Node contiene informazioni come: id(). host(), port() ,isEmpty()
-                int brokerCount = brokerNodes.size();
-                System.out.println("📡 Broker attivi nel cluster: " + brokerCount);
-
-                // Imposta dinamicamente il replication factor in base a i broker disponibili (max 3)
-                short replicationFactor = (short) Math.min(3, brokerCount);
-
-                // Se non ci sono broker disponibili, lancia un errore
-                if (replicationFactor < 1) {
-                    throw new IllegalStateException("❌ Nessun broker disponibile per creare il topic.");
-                }
-
-                // Stampa configurazione di creazione prima di procedere
-                System.out.printf("📦 Creazione del topic \"%s\" con %d partizioni e replication factor %d%n",
-                        TOPIC_NAME, numPartitions, replicationFactor);
-
-                // Prepara le configurazioni personalizzate del topic
-                Map<String, String> topicConfigs = new HashMap<>();
-                // La configurazione "min.insync.replicas" indica il numero minimo di repliche che devono essere "in-sync"
-                // (cioè aggiornate con il leader) affinché Kafka consideri valido un write quando il producer usa "acks=all".
-                // Se il numero di repliche in-sync scende al di sotto di questo valore, Kafka rifiuta le scritture con errore
-                // per garantire la durabilità dei dati (solo se il producer ha configurato acks=all).
-                // Nota: se il producer usa acks=1 o acks=0, questa configurazione NON ha effetto.
-                // Nota: avere un alto min.insync.replicas, vicino o uguale al replication factor delle partizioni, significa bassa availability
-                int desiredMinInSyncReplicas = Math.max(1, replicationFactor - 1);
-                topicConfigs.put("min.insync.replicas", String.valueOf(desiredMinInSyncReplicas));
-
-                System.out.println("🔧 Configurazioni del topic:");
-                topicConfigs.forEach((key, value) -> System.out.println(" - " + key + " = " + value));
-
-                // Crea il topic con 3 partizioni e replication factor calcolato e le configs stabilite
-                NewTopic newTopic = new NewTopic(TOPIC_NAME, numPartitions, replicationFactor).configs(topicConfigs);
-                adminClient.createTopics(Collections.singletonList(newTopic)).all().get();
-                System.out.println("✅ Topic creato: " + TOPIC_NAME);
-
-            } else {
-                // Il topic esiste già, nessuna azione necessaria
-                System.out.println("ℹ️ Ho verificato che il topic: " + TOPIC_NAME + " esiste.");
-            }
+            createTopic(adminClient, topicNames, DEMO_TOPIC_NAME, brokerCount);
+            createTopic(adminClient, topicNames, AIR_TOPIC_NAME, brokerCount);
 
         } catch (Exception e) {
             // Gestione di eventuali errori durante la creazione/verifica
@@ -91,6 +56,51 @@ public class KafkaTopicInitializer {
         }
     }
 
+
+    /**
+     * Crea un topic se non esiste ancora, con configurazione dinamica in base al numero di broker disponibili.
+     */
+    private static void createTopic(AdminClient adminClient, Set<String> existingTopics, String topicName, int brokerCount)
+            throws ExecutionException, InterruptedException {
+
+        if (existingTopics.contains(topicName)) {
+            // Il topic esiste già, nessuna azione necessaria
+            System.out.println("ℹ️ Ho verificato l'esistenza del topic: \"" + topicName + "\". ");
+            return;
+        }
+
+        // Imposta dinamicamente il replication factor in base a i broker disponibili (max 3)
+        short replicationFactor = (short) Math.min(3, brokerCount);
+
+        // Se non ci sono broker disponibili, lancia un errore
+        if (replicationFactor < 1) {
+            throw new IllegalStateException("❌ Nessun broker disponibile per creare il topic \"" + topicName + "\".");
+        }
+
+        // Stampa configurazione di creazione prima di procedere
+        System.out.printf("📦 Creazione del topic \"%s\" con %d partizioni e replication factor %d%n",
+                topicName, numPartitions, replicationFactor);
+
+        // Prepara le configurazioni personalizzate del topic
+        Map<String, String> topicConfigs = new HashMap<>();
+        // La configurazione "min.insync.replicas" indica il numero minimo di repliche che devono essere "in-sync"
+        // (cioè aggiornate con il leader) affinché Kafka consideri valido un write quando il producer usa "acks=all".
+        // Se il numero di repliche in-sync scende al di sotto di questo valore, Kafka rifiuta le scritture con errore
+        // per garantire la durabilità dei dati (solo se il producer ha configurato acks=all).
+        // Nota: se il producer usa acks=1 o acks=0, questa configurazione NON ha effetto.
+        // Nota: avere un alto min.insync.replicas, vicino o uguale al replication factor delle partizioni, significa bassa availability
+        int minInSyncReplicas = Math.max(1, replicationFactor - 1);
+        topicConfigs.put("min.insync.replicas", String.valueOf(minInSyncReplicas));
+
+        System.out.println("🔧 Configurazioni del topic \"" + topicName + "\":");
+        topicConfigs.forEach((key, value) -> System.out.println(" - " + key + " = " + value));
+
+        // Crea il topic con 3 partizioni e replication factor calcolato e le configs stabilite
+        NewTopic newTopic = new NewTopic(topicName, numPartitions, replicationFactor).configs(topicConfigs);
+        adminClient.createTopics(Collections.singletonList(newTopic)).all().get();
+
+        System.out.println("✅ Topic creato: " + topicName);
+    }
 
     // Metodo che ttende che Kafka sia pronto a rispondere alle chiamate AdminClient, fino al timeout indicato
     private static void waitForKafka(AdminClient adminClient, Duration timeout) {

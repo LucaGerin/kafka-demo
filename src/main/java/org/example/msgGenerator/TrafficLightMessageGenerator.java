@@ -2,10 +2,10 @@ package org.example.msgGenerator;
 
 import org.example.producer.MessageProducer;
 
-public class TrafficLightMessageGenerator extends MessageGenerator {
+public class TrafficLightMessageGenerator extends MessageGenerator<String, String> {
 
 
-    public TrafficLightMessageGenerator(MessageProducer producer, String generatorId) {
+    public TrafficLightMessageGenerator(MessageProducer<String, String> producer, String generatorId) {
         super(producer, generatorId);
     }
 

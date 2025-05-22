@@ -9,7 +9,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Properties;
 
-public class KafkaProducerDemo implements MessageProducer{
+public class KafkaProducerDemo implements MessageProducer<String, String>{
 
     private final String producerId;
     private final String topic;

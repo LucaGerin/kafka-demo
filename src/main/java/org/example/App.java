@@ -1,10 +1,12 @@
 package org.example;
 
+import com.example.avro.AircraftEvent;
+import com.example.avro.AircraftKey;
 import org.example.config.KafkaTopicInitializer;
 import org.example.consumer.KafkaConsumerDemo;
-import org.example.msgGenerator.MessageGenerator;
 import org.example.msgGenerator.ThermometerMessageGenerator;
 import org.example.msgGenerator.TrafficLightMessageGenerator;
+import org.example.producer.AircraftEventProducer;
 import org.example.producer.KafkaProducerDemo;
 import org.example.producer.KafkaProducerEOSDemo;
 import org.example.producer.MessageProducer;
@@ -17,9 +19,11 @@ public class App {
     // Flag che abilita o disabilita il producer con policy EOS
     private static final Boolean eos = true;
 
-    private static final String TOPIC = "demo-topic";
+    private static final String DEMO_TOPIC = "demo-topic";
+    private static final String AIR_TOPIC = "aircraft-topic";
     private static final String BOOTSTRAP_SERVERS = "localhost:9092";
     private static final String GROUP_ID = "demo-group";
+    private static final String SCHEMA_REGISTRY_URL = "http://localhost:8081";
 
 
     public static void main(String[] args) {
@@ -33,18 +37,20 @@ public class App {
         KafkaTopicInitializer.createTopicIfNotExists();
 
         // Lancia il consumer su thread separato
-        KafkaConsumerDemo consumerRunnable = new KafkaConsumerDemo(TOPIC, BOOTSTRAP_SERVERS, GROUP_ID, "C-1");
+        KafkaConsumerDemo consumerRunnable = new KafkaConsumerDemo(DEMO_TOPIC, BOOTSTRAP_SERVERS, GROUP_ID, "C-1");
         Thread consumerThread = new Thread(consumerRunnable);
         consumerThread.start();
 
         // Lista dei producer
-        List<MessageProducer> producers = new ArrayList<>();
+        List<MessageProducer<?, ?>> producers = new ArrayList<>();
 
         // Crea i producer
-        MessageProducer standardProducer = new KafkaProducerDemo(TOPIC, BOOTSTRAP_SERVERS, "P-1");
+        MessageProducer<String, String> standardProducer = new KafkaProducerDemo(DEMO_TOPIC, BOOTSTRAP_SERVERS, "P-1");
         producers.add(standardProducer);
-        MessageProducer eosProducer = new KafkaProducerEOSDemo(TOPIC, BOOTSTRAP_SERVERS, "eos-producer-1", "P-eos-1", true);
+        MessageProducer<String, String> eosProducer = new KafkaProducerEOSDemo(DEMO_TOPIC, BOOTSTRAP_SERVERS, "eos-producer-1", "P-eos-1", true);
         producers.add(eosProducer);
+        MessageProducer<AircraftKey, AircraftEvent> airProducer = new AircraftEventProducer(AIR_TOPIC, BOOTSTRAP_SERVERS, SCHEMA_REGISTRY_URL,"A-1");
+        producers.add(airProducer);
 
         // Lista dei Thread dei generatori
         List<Thread> generatorThreads = new ArrayList<>();
@@ -78,7 +84,7 @@ public class App {
             }
 
             System.out.println("🔒 Chiudo i producer condivisi...");
-            for (MessageProducer producer : producers) {
+            for (MessageProducer<?, ?> producer : producers) {
                 try {
                     producer.close();
                 } catch (Exception e) {

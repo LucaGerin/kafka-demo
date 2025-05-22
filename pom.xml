@@ -86,7 +86,46 @@
                 </executions>
             </plugin>
 
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.3.0</version>
+                <executions>
+                    <execution>
+                        <id>add-source</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <!-- Directory dove sono generati i sorgenti Avro (.java), da aggiungere al classpath -->
+                                <source>${project.build.directory}/generated-sources/avro</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
         </plugins>
+
+        <!-- Definisce le directory da cui Maven copia le risorse nel classpath -->
+        <resources>
+            <resource>
+                <!-- Directory standard dove si trovano file di risorse come application.properties, schema Avro JSON (se non compilati), ecc. -->
+                <directory>src/main/resources</directory>
+            </resource>
+        </resources>
+
+        <!-- Indica a Maven la directory dei sorgenti Java principali -->
+        <sourceDirectory>src/main/java</sourceDirectory>
+
+        <!-- Indica la directory dei test Java -->
+        <testSourceDirectory>src/test/java</testSourceDirectory>
+
+        <!-- Obiettivo predefinito quando si esegue `mvn` senza specificare un goal -->
+        <defaultGoal>install</defaultGoal>
+
     </build>
 
     <!-- Repository per io.confluent:kafka-avro-serializer -->

@@ -25,7 +25,7 @@ import java.util.Random;
  * che in questa classe non è utilizzato, non essendo il caso.
  */
 
-public class KafkaProducerEOSDemo implements MessageProducer{
+public class KafkaProducerEOSDemo implements MessageProducer<String, String>{
 
 
     private final String producerId;

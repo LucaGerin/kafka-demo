@@ -1,8 +1,8 @@
 package org.example.producer;
 
-public interface MessageProducer extends AutoCloseable {
+public interface MessageProducer<K, V> extends AutoCloseable {
 
-    void sendMessage(String key, String value);
+    void sendMessage(K key, V value);
 
     String getProducerId();
 

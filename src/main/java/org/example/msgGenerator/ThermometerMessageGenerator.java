@@ -2,10 +2,10 @@ package org.example.msgGenerator;
 
 import org.example.producer.MessageProducer;
 
-public class ThermometerMessageGenerator extends MessageGenerator {
+public class ThermometerMessageGenerator extends MessageGenerator<String, String> {
 
 
-    public ThermometerMessageGenerator(MessageProducer producer, String generatorId) {
+    public ThermometerMessageGenerator(MessageProducer<String, String> producer, String generatorId) {
         super(producer, generatorId);
     }
 

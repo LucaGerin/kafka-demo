@@ -2,12 +2,12 @@ package org.example.msgGenerator;
 
 import org.example.producer.MessageProducer;
 
-public abstract class MessageGenerator implements Runnable {
+public abstract class MessageGenerator<K, V> implements Runnable {
 
-    private final MessageProducer producer;
+    private final MessageProducer<K, V> producer;
     private String generatorId;
 
-    public MessageGenerator(MessageProducer producer, String generatorId) {
+    public MessageGenerator(MessageProducer<K, V> producer, String generatorId) {
         this.producer = producer;
         this.generatorId = generatorId;
     }
@@ -17,18 +17,18 @@ public abstract class MessageGenerator implements Runnable {
     }
 
     // Metodo astratto da implementare per generare messaggi
-    protected abstract String createKey();
-    protected abstract String createValue(int i);
+    protected abstract K createKey();
+    protected abstract V createValue(int i);
 
 
     @Override
     public void run() {
         try {
             for (int i = 1; i <= 5; i++) {
-                String key = createKey();
-                String value = createValue(i);
+                K key = createKey();
+                V value = createValue(i);
 
-                // Usa il prpducer per mandare un messaggio
+                // Usa il producer per mandare un messaggio
                 producer.sendMessage(key, value);
 
                 // Simula tempo tra i messaggi
