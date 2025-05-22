@@ -1,0 +1,36 @@
+{
+	"type": "record",
+	"name": "AircraftEvent",
+	"namespace": "com.example.avro",
+	"fields": [
+		{
+			"name": "eventId",
+			"type": "string",
+			"doc": "Unique identifier for this event"
+		},
+		{
+			"name": "eventType",
+			"type": {
+				"type": "enum",
+				"name": "AircraftEventType",
+				"symbols": ["DEPARTURE", "ARRIVAL"]
+			},
+			"doc": "Type of event: departure or arrival"
+		},
+		{
+			"name": "airportCode",
+			"type": "string",
+			"doc": "Airport IATA or ICAO code"
+		},
+		{
+			"name": "scheduledTime",
+			"type": "long",
+			"doc": "Scheduled time in epoch millis"
+		},
+		{
+			"name": "actualTime",
+			"type": "long",
+			"doc": "Actual time in epoch millis"
+		}
+	]
+}

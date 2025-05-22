@@ -1,0 +1,36 @@
+{
+  "type": "record",
+  "name": "AircraftKey",
+  "namespace": "com.example.avro",
+  "fields": [
+    {
+      "name": "tailNumber",
+      "type": "string",
+      "doc": "Aircraft tail number (registration ID), unique per aircraft"
+    },
+    {
+      "name": "model",
+      "type": "string",
+      "doc": "Aircraft model, e.g., Boeing 737"
+    },
+    {
+      "name": "airline",
+      "type": {
+        "type": "enum",
+        "name": "Airline",
+        "symbols": [
+          "RYANAIR",
+          "DELTA",
+          "LUFTHANSA",
+          "EMIRATES",
+          "AIRFRANCE",
+          "EASYJET",
+          "UNITED",
+          "QATAR",
+          "ALITALIA"
+        ]
+      },
+      "doc": "Airline operating the aircraft"
+    }
+  ]
+}
