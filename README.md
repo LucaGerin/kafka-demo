@@ -13,7 +13,7 @@ Include:
 - Un `AircraftEventProducer` che consente l'invio di messaggi seguendo alcuni schemi Avro salvati
 - Un generatore di messaggi sulla partenza o arrivo di aerei in degli aeroporti
 - Un `AircraftEventConsumer`
-- 
+- Due printer per i messaggi scaricati dai topic
 ---
 
 ## 📦 Componenti utilizzati
@@ -26,6 +26,7 @@ Include:
 | Kafka (Broker) | Confluent Kafka 7.6.0     |
 | Zookeeper      | Confluent Zookeeper 7.6.0 |
 | SLF4J          | 2.0.9                     |
+| Schema Registry| 7.6.0                     |
 | Build System   | Maven                     |
 
 ---
